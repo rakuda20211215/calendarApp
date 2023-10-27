@@ -55,67 +55,67 @@ struct CalendarView: View {
         }
     }
     
-
-    /*
-    var body: some View {
-        var ekEvents: [EKEvent] = ekEventController.getEvents()
-        VStack {
-            TextField("text", text: $name)
-            Button(action: {
-                // レコードの生成
-                let shop = userData()
-                shop.name = name
-                
-                // 保存
-                try! realm.write {
-                    realm.add(shop)
-                }
-
-            }, label: {
-                Text("追加")
-            })
-            
-            Text(shoptable.shopdata[shoptable.shopdata.count-1].name)
-            
-            Button {
-                shoptable.setter()
-                
-                ekEvents = ekEventController.getEvents(startDate: Calendar.current.date(byAdding: .day, value: -3, to: Date())!)
-                ekEventDate = ekEvents.isEmpty ? "empty" : ekEvents[0].description
-                ekEventCalendar = ekEventController.getCalendars().isEmpty ? "empty" : ekEventController.getCalendars().description
-            } label: {
-                Text("更新")
-            }
-            
-            Button {
-                var calendar: EKCalendar = ekEventController.getCalendars()[0]
-                _ = ekEventController.addEvent(calendar: calendar, title: name, startDate: Date(), endDate: Date(), isAllDay: false, timeZone: TimeZone.current)
-            } label: {
-                Text("イベント追加")
-            }
-            
-            Button {
-                _ = ekEventController.addCalendar(nameCalendar: name)
-            } label: {
-                Text("カレンダー追加")
-            }
-            
-            Spacer()
-            
-            ScrollView {
-                Text(ekEventDate)
-                Text(ekEventCalendar)
-                Text(ekEventController.checkAccess().description)
-            }
-        }
-        .padding()
-    }
     
-    func getRealmData() -> String {
-        let realm = try! Realm()
-        
-        return realm.objects(userData.self).description
-    }*/
+    /*
+     var body: some View {
+     var ekEvents: [EKEvent] = ekEventController.getEvents()
+     VStack {
+     TextField("text", text: $name)
+     Button(action: {
+     // レコードの生成
+     let shop = userData()
+     shop.name = name
+     
+     // 保存
+     try! realm.write {
+     realm.add(shop)
+     }
+     
+     }, label: {
+     Text("追加")
+     })
+     
+     Text(shoptable.shopdata[shoptable.shopdata.count-1].name)
+     
+     Button {
+     shoptable.setter()
+     
+     ekEvents = ekEventController.getEvents(startDate: Calendar.current.date(byAdding: .day, value: -3, to: Date())!)
+     ekEventDate = ekEvents.isEmpty ? "empty" : ekEvents[0].description
+     ekEventCalendar = ekEventController.getCalendars().isEmpty ? "empty" : ekEventController.getCalendars().description
+     } label: {
+     Text("更新")
+     }
+     
+     Button {
+     var calendar: EKCalendar = ekEventController.getCalendars()[0]
+     _ = ekEventController.addEvent(calendar: calendar, title: name, startDate: Date(), endDate: Date(), isAllDay: false, timeZone: TimeZone.current)
+     } label: {
+     Text("イベント追加")
+     }
+     
+     Button {
+     _ = ekEventController.addCalendar(nameCalendar: name)
+     } label: {
+     Text("カレンダー追加")
+     }
+     
+     Spacer()
+     
+     ScrollView {
+     Text(ekEventDate)
+     Text(ekEventCalendar)
+     Text(ekEventController.checkAccess().description)
+     }
+     }
+     .padding()
+     }
+     
+     func getRealmData() -> String {
+     let realm = try! Realm()
+     
+     return realm.objects(userData.self).description
+     }*/
 }
 
 class DateObject: ObservableObject {
@@ -123,36 +123,53 @@ class DateObject: ObservableObject {
     var month: Int
     @Published var yearView: Int
     @Published var monthView: Int
-    @Published var rangeMonth: [Int] = Array<Int>(-5...5)
-    @Published var selection: Int = 0
+    @Published var viewDate: Date
+    var rangeMonth: [Int] = Array<Int>(-5...5)
+    @Published var selection: Int? = 0
+    //@Published var scrollID: Int?
     var oldSelection: Int = 0
     
-    init() {
-        self.year = Calendar.current.component(.year, from: Date())
-        self.month = Calendar.current.component(.month, from: Date())
+    init(viewDate: Date = Date()) {
+        self.viewDate = viewDate
+        self.year = Calendar.current.component(.year, from: viewDate)
+        self.month = Calendar.current.component(.month, from: viewDate)
+        self.yearView = year
+        self.monthView = month
+    }
+    
+    func initializObj(date: Date) {
+        self.viewDate = date
+        self.rangeMonth = Array<Int>(-5...5)
+        self.selection = 0
+        self.oldSelection = 0
+        self.year = Calendar.current.component(.year, from: date)
+        self.month = Calendar.current.component(.month, from: date)
         self.yearView = year
         self.monthView = month
     }
     
     func updateDateObj() -> Void {
-        if self.selection > self.oldSelection {
-            self.rangeMonth.append(self.rangeMonth[self.rangeMonth.count - 1] + 1)
-            self.rangeMonth.removeFirst()
+        if self.selection! > self.oldSelection {
+            if (rangeMonth.count - 1) - rangeMonth.firstIndex(of: selection!)! < 3 {
+                self.rangeMonth.append(self.rangeMonth[self.rangeMonth.count - 1] + 1)
+            }
             self.monthView += 1
             if self.monthView > 12 {
                 self.monthView = 1
                 self.yearView += 1
             }
-        } else if self.selection < self.oldSelection {
-            self.rangeMonth.insert(self.rangeMonth[0] - 1, at: 0)
-            self.rangeMonth.removeLast()
+        } else if self.selection! < self.oldSelection {
+            if rangeMonth.firstIndex(of: selection!)! < 3 {
+                self.rangeMonth.insert(self.rangeMonth[0] - 1, at: 0)
+            }
             self.monthView -= 1
             if self.monthView < 1 {
                 self.monthView = 12
                 self.yearView -= 1
             }
+            
         }
-        self.oldSelection = self.selection
+        self.oldSelection = self.selection!
         
         return
     }
