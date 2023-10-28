@@ -53,10 +53,13 @@ struct AddEventView: View {
                         DateTimeSelect(startOrEnd: 1, date: $eventData.ekEvent.endDate, width: width)
                             .environmentObject(endDayDateObj)
                         
+                        
+                        // 繰り返しの選択
+                        //RecurrencePicker(ekEvent: $eventData.ekEvent)
+                        
                         HorizontalLine()
                             .frame(height: 1)
                             .padding(EdgeInsets(top: 10, leading: 0, bottom: 0, trailing: 0))
-                        //
                     }
                     
                     // カレンダー
@@ -130,10 +133,10 @@ struct DateTimeSelect: View {
                 }
             } label: {
                 Text(dateFormatterDate.string(from: date))
-                    //.font(.system(size: CGFloat(((width / 2) + 15) * 0.8) / 11))
+                //.font(.system(size: CGFloat(((width / 2) + 15) * 0.8) / 11))
                     .fontWeight(.bold)
                     .foregroundColor(.black)
-                    //.frame(width: ((width / 2) + 15) * 0.8)
+                //.frame(width: ((width / 2) + 15) * 0.8)
                 
             }
             .padding(10)
@@ -183,7 +186,7 @@ struct selectYear: View {
     @EnvironmentObject var eventData: EventData
     @EnvironmentObject var dayDateObj: DateObject
     @Binding var date: Date
-
+    
     var body: some View {
         let initialPosition = Calendar.current.component(.year, from: date)
         HorizontalWheelPicker_cigma(initialCenterItem: initialPosition, selection: $dayDateObj.yearView, numItem: 5, items: Array(1500...3000)) { index in
@@ -667,12 +670,12 @@ struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
     let numItem: Int
     
     init (initialCenterItem item: Item,
-          selection: Binding<Item> = Binding.constant(0),
+          selection: Binding<Item>? = nil,
           numItem: Int = 5, items: Binding<[Item]>,
           content: @escaping (Item) -> Content,
           onChangeEvent: @escaping (Item) -> Void) {
         self.position = items.wrappedValue.firstIndex(of: item)!
-        self._positioningItem = selection
+        self._positioningItem = selection ?? Binding.constant(item)
         self.numItem = numItem
         self.items = items
         self.contentBuilder = content
@@ -680,12 +683,12 @@ struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
     }
     
     init (initialCenterItem item: Item,
-          selection: Binding<Item> = Binding.constant(0),
+          selection: Binding<Item>? = nil,
           numItem: Int = 5, items: [Item],
           content: @escaping (Item) -> Content,
           onChangeEvent: @escaping (Item) -> Void) {
         self.position = items.firstIndex(of: item)!
-        self._positioningItem = selection
+        self._positioningItem = selection ?? Binding.constant(item)
         self.numItem = numItem
         self.items = .constant(items)
         self.contentBuilder = content
@@ -726,6 +729,112 @@ struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
                             }
                             .scrollTargetLayout()
                             .safeAreaPadding(.horizontal, itemWidth * CGFloat(numItem / 2))
+                            .onAppear {
+                                proxy.scrollTo(position, anchor: .center)
+                            }
+                            .onPreferenceChange(HorizontalItemPrefurenceKey.self) { prefs in
+                                // 非同期で実行しないとcenteItemの参照に間に合わない
+                                Task {
+                                    itemPoints = prefs.mapValues {  geometry[$0] }
+                                }
+                            }
+                            .onChange(of: positioningItem) { index in
+                                // 自らscrollIDを更新した場合は処理を飛ばす
+                                if  scrollID == oldScrollID {
+                                    withAnimation {
+                                        let id = items.wrappedValue.firstIndex(of: positioningItem)!
+                                        proxy.scrollTo(id, anchor: .center)
+                                    }
+                                }
+                                
+                                oldScrollID = scrollID
+                            }
+                        }
+                    }
+                    .scrollTargetBehavior(.viewAligned)
+                    .scrollPosition(id: $scrollID, anchor: .center)
+                    .onChange(of: scrollID) { _ in
+                        if 0..<items.wrappedValue.count ~= scrollID! {
+                            onChangeEvent(items.wrappedValue[scrollID!])
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct VerticalWheelPicker<Content: View, Item: Comparable>: View {
+    var position: Int
+    @Binding var positioningItem: Item
+    var items: Binding<[Item]>
+    let contentBuilder: (Item) -> Content
+    @State private var scrollID: Int?
+    @State private var oldScrollID: Int?
+    @State private var itemPoints: [Int: CGPoint]?
+    let onChangeEvent: (Item) -> Void
+    let numItem: Int
+    
+    init (initialCenterItem item: Item,
+          selection: Binding<Item>? = nil,
+          numItem: Int = 5, items: Binding<[Item]>,
+          content: @escaping (Item) -> Content,
+          onChangeEvent: @escaping (Item) -> Void) {
+        self.position = items.wrappedValue.firstIndex(of: item)!
+        self._positioningItem = selection ?? Binding.constant(item)
+        self.numItem = numItem
+        self.items = items
+        self.contentBuilder = content
+        self.onChangeEvent = onChangeEvent
+    }
+    
+    init (initialCenterItem item: Item,
+          selection: Binding<Item>? = nil,
+          numItem: Int = 5, items: [Item],
+          content: @escaping (Item) -> Content,
+          onChangeEvent: @escaping (Item) -> Void) {
+        self.position = items.firstIndex(of: item)!
+        self._positioningItem = selection ?? Binding.constant(item)
+        self.numItem = numItem
+        self.items = .constant(items)
+        self.contentBuilder = content
+        self.onChangeEvent = onChangeEvent
+    }
+    
+    var body: some View {
+        if #available(iOS 17.0, *) {
+            VStack {
+                GeometryReader { geometry in
+                    // let width = geometry.size.width
+                    let height = geometry.size.height
+                    let itemHeight = floor(height / CGFloat(numItem))
+                    var centerItem: Int {
+                        guard itemPoints != nil else { return 0 }
+                        for point in itemPoints!.sorted(by: { $0.key < $1.key }) {
+                            if point.value.y >= height / 2 - itemHeight {
+                                return point.key
+                            }
+                        }
+                        return itemPoints!.max(by: { $0.key < $1.key })?.key ?? 0
+                    }
+                    ScrollView(.vertical, showsIndicators: false) {
+                        ScrollViewReader { proxy in
+                            LazyVStack(spacing: 0) {
+                                ForEach(0..<items.wrappedValue.count, id: \.self) { index in
+                                    if 0..<items.wrappedValue.count ~= index {
+                                        contentBuilder(items.wrappedValue[index])
+                                            .foregroundColor(centerItem  == index ? .black : .gray)
+                                            .fontWeight(centerItem  == index ? .bold : .regular)
+                                            .frame(height: itemHeight)
+                                            .id(index)
+                                            .anchorPreference(key: HorizontalItemPrefurenceKey.self, value: .topLeading) {
+                                                return [index: $0]
+                                            }
+                                    }
+                                }
+                            }
+                            .scrollTargetLayout()
+                            .safeAreaPadding(.vertical, itemHeight * CGFloat(numItem / 2))
                             .onAppear {
                                 proxy.scrollTo(position, anchor: .center)
                             }
@@ -868,28 +977,6 @@ struct CalendarSeal: View {
         }
         .background(isCurrent ? Color(color) : nil)
         .cornerRadius(5)
-    }
-}
-
-struct RecurrencePicker: View {
-    @Binding var ekEvent: EKEvent
-    @State private var isValid: Bool
-    @State private var recurrenceRules: EKRecurrenceRule = .init(recurrenceWith: .daily, interval: 1, end: nil)
-    var body: some View {
-        HStack {
-            Text("繰り返し")
-            Spacer()
-            Toggle(isOn: $isValid) {
-                Text("繰り返し")
-            }
-            .onChange(of: isValid) { _ in
-                if isValid {
-                    ekEvent.addRecurrenceRule(recurrenceRules)
-                } else {
-                    ekEvent.removeRecurrenceRule(recurrenceRules)
-                }
-            }
-        }
     }
 }
 

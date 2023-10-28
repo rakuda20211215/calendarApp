@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		3F878FF1E0DE00957DB1AD5F /* Pods_calendarApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B6B1BBA3E4F762DF615DF455 /* Pods_calendarApp.framework */; };
 		686F44B12AD1CAA300913C1E /* testRealm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686F44B02AD1CAA300913C1E /* testRealm.swift */; };
+		687006772AED291200740891 /* RecurrencePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687006762AED291200740891 /* RecurrencePicker.swift */; };
 		68792BA52AD24CCD007EB984 /* eventData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68792BA42AD24CCD007EB984 /* eventData.swift */; };
 		687C43262AD8603500A0122C /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687C43252AD8603500A0122C /* CalendarView.swift */; };
 		687E07712AD907D2001D1F9A /* AddEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687E07702AD907D2001D1F9A /* AddEventView.swift */; };
@@ -23,6 +24,7 @@
 /* Begin PBXFileReference section */
 		3D57B9A9C6D11855DFD6BA6F /* Pods-calendarApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-calendarApp.debug.xcconfig"; path = "Target Support Files/Pods-calendarApp/Pods-calendarApp.debug.xcconfig"; sourceTree = "<group>"; };
 		686F44B02AD1CAA300913C1E /* testRealm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = testRealm.swift; sourceTree = "<group>"; };
+		687006762AED291200740891 /* RecurrencePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurrencePicker.swift; sourceTree = "<group>"; };
 		68792BA42AD24CCD007EB984 /* eventData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = eventData.swift; sourceTree = "<group>"; };
 		687C43252AD8603500A0122C /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		687E07702AD907D2001D1F9A /* AddEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEventView.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				688EAFED2ACF86D500228188 /* EventSeal.swift */,
 				688EAFEF2ACFDF4F00228188 /* MonthCalendar.swift */,
 				687E07702AD907D2001D1F9A /* AddEventView.swift */,
+				687006762AED291200740891 /* RecurrencePicker.swift */,
 			);
 			path = CalendarParts;
 			sourceTree = "<group>";
@@ -256,6 +259,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				68FA21022ACA79C200C1C77E /* ContentView.swift in Sources */,
+				687006772AED291200740891 /* RecurrencePicker.swift in Sources */,
 				687C43262AD8603500A0122C /* CalendarView.swift in Sources */,
 				68FA21002ACA79C200C1C77E /* calendarAppApp.swift in Sources */,
 				687E07712AD907D2001D1F9A /* AddEventView.swift in Sources */,

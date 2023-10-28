@@ -112,21 +112,6 @@ struct MonthCalendar: View {
         }
     }
     
-    func createEvent(day: Int) -> EKEvent {
-        let eventStore = EKEventStore()
-        let ekEvent = EKEvent(eventStore: eventStore)
-        let calendar = EKCalendar(for: .event, eventStore: eventStore)
-        calendar.title = "test"
-        calendar.cgColor = CGColor(red: 0.3 * CGFloat(day), green: 0.7 * CGFloat(day), blue: 0.2, alpha: 1)
-        ekEvent.calendar = calendar
-        ekEvent.title = "titleTest "
-        ekEvent.startDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2023, month: 10, day: day))
-        ekEvent.endDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2023, month: 11, day: 0))
-        ekEvent.isAllDay = false
-        
-        return ekEvent
-    }
-    
     func createCustomWeek(_ indexStartWeek: Int) -> [String] {
         var w = [String]()
         
@@ -150,8 +135,22 @@ struct MonthCalendar: View {
         
         return countEvents
     }
-    
 
+}
+
+func createEvent(day: Int) -> EKEvent {
+    let eventStore = EKEventStore()
+    let ekEvent = EKEvent(eventStore: eventStore)
+    let calendar = EKCalendar(for: .event, eventStore: eventStore)
+    calendar.title = "test"
+    calendar.cgColor = CGColor(red: 0.3 * CGFloat(day), green: 0.7 * CGFloat(day), blue: 0.2, alpha: 1)
+    ekEvent.calendar = calendar
+    ekEvent.title = "titleTest "
+    ekEvent.startDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2023, month: 10, day: day))
+    ekEvent.endDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2023, month: 11, day: 0))
+    ekEvent.isAllDay = false
+    
+    return ekEvent
 }
 
 class getInfoMonth {
