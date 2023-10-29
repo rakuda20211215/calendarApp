@@ -154,8 +154,9 @@ func createEvent(day: Int) -> EKEvent {
 }
 
 class getInfoMonth {
+    @EnvironmentObject var eventData: EventData
     init(year: Int, month: Int) {
-        let calendar = Calendar(identifier: .gregorian)
+        let calendar = Calendar.current
         let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: 1)
         let date = calendar.date(from: dateComp)!
         let rangeMonth = calendar.range(of: .day, in: .month, for: date)!
@@ -166,9 +167,9 @@ class getInfoMonth {
     }
     
     init(date: Date) {
-        let year = Calendar.current.component(.year, from: date)
-        let month = Calendar.current.component(.month, from: date)
-        let calendar = Calendar(identifier: .gregorian)
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: date)
+        let month = calendar.component(.month, from: date)
         let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: 1)
         let date = calendar.date(from: dateComp)!
         let rangeMonth = calendar.range(of: .day, in: .month, for: date)!

@@ -60,6 +60,8 @@ struct AddEventView: View {
                         HorizontalLine()
                             .frame(height: 1)
                             .padding(EdgeInsets(top: 10, leading: 0, bottom: 0, trailing: 0))
+                        
+                        
                     }
                     
                     // カレンダー
@@ -369,7 +371,7 @@ struct selectDate_beta: View {
                                         .foregroundColor(compareDate(itemDate, currentDate: date) ? .white : .black)
                                         .frame(width: 30, height: 30, alignment: .center)
                                         .underline(color: compareDate(itemDate) ? (compareDate(itemDate, currentDate: date)  ? .white : .black) : .clear)
-                                        .font(.system(size: 15))
+                                        .font(.system(size: 13))
                                         .background(compareDate(itemDate, currentDate: date) ? .black : .clear)
                                         .cornerRadius(15)
                                         .frame(width: itemWidth)

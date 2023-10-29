@@ -13,8 +13,9 @@ import EventKit
 struct ContentView: View {
     var body: some View {
         //CalendarView()
-        AddEventView()
-            .environmentObject(EventData())
+        //AddEventView()
+          //  .environmentObject(EventData())
+        RecurrencePicker()
     }
 }
 
