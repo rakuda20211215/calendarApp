@@ -53,15 +53,18 @@ struct AddEventView: View {
                         DateTimeSelect(startOrEnd: 1, date: $eventData.ekEvent.endDate, width: width)
                             .environmentObject(endDayDateObj)
                         
-                        
-                        // 繰り返しの選択
-                        //RecurrencePicker(ekEvent: $eventData.ekEvent)
-                        
                         HorizontalLine()
                             .frame(height: 1)
                             .padding(EdgeInsets(top: 10, leading: 0, bottom: 0, trailing: 0))
                         
+                        // 繰り返しの選択
+                        RecurrencePicker(ekEvent: $eventData.ekEvent)
+                            .frame(height: 25)
+                        //Text("aaa")
                         
+                        HorizontalLine()
+                            .frame(height: 1)
+                            .padding(EdgeInsets(top: 10, leading: 0, bottom: 0, trailing: 0))
                     }
                     
                     // カレンダー
@@ -74,6 +77,7 @@ struct AddEventView: View {
                             .padding(EdgeInsets(top: Y_CALENDAR, leading: 0, bottom: 0, trailing: 0))
                     }
                 }
+                .font(.system(size: 14))
             }
             .onTapGesture(count: 1) {
                 if(isShownTabCalendar){
@@ -190,11 +194,11 @@ struct selectYear: View {
     @Binding var date: Date
     
     var body: some View {
-        let initialPosition = Calendar.current.component(.year, from: date)
+        let initialPosition = dayDateObj.calendar.component(.year, from: date)
         HorizontalWheelPicker_cigma(initialCenterItem: initialPosition, selection: $dayDateObj.yearView, numItem: 5, items: Array(1500...3000)) { index in
             Text(index.description)
         } onChangeEvent: { item in
-            let calendar = Calendar.current
+            let calendar = dayDateObj.calendar
             var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
             components.year = item
             date = calendar.date(from: components)!
@@ -215,10 +219,10 @@ struct selectMonth: View {
         self._index = State(initialValue: Calendar.current.component(.month, from: date.wrappedValue))
     }
     var body: some View {
-        HorizontalWheelPicker_cigma(initialCenterItem: Calendar.current.component(.month, from: date), selection: $dayDateObj.monthView, numItem: 5, items: Array(1...12)) { index in
+        HorizontalWheelPicker_cigma(initialCenterItem: dayDateObj.calendar.component(.month, from: date), selection: $dayDateObj.monthView, numItem: 5, items: Array(1...12)) { index in
             Text(index.description)
         } onChangeEvent: { item in
-            let calendar = Calendar.current
+            let calendar = dayDateObj.calendar
             var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
             components.month = item
             date = calendar.date(from: components)!
@@ -228,7 +232,7 @@ struct selectMonth: View {
         .frame(height: 40)
     }
 }
-
+/*
 struct selectDate: View {
     @EnvironmentObject var eventData: EventData
     @Binding var date: Date
@@ -240,7 +244,7 @@ struct selectDate: View {
     
     
     var body: some View {
-        let viewDate = Calendar(identifier: .gregorian).date(from: DateComponents(
+        let viewDate = .date(from: DateComponents(
             year: dateObj.getYear(date),
             month: dateObj.getMonth(date) + diffMonth,
             day: dateObj.getDay(date)))!
@@ -313,7 +317,7 @@ struct selectDate: View {
         return true
     }
 }
-
+*/
 struct selectDate_beta: View {
     @EnvironmentObject var eventData: EventData
     @EnvironmentObject var dateObj: DateObject
@@ -329,7 +333,8 @@ struct selectDate_beta: View {
     }
     
     var body: some View {
-        let viewDate = Calendar(identifier: .gregorian).date(from: DateComponents(
+        let calendar = dateObj.calendar
+        let viewDate = calendar.date(from: DateComponents(
             year: dateObj.getYear(dateObj.viewDate),
             month: dateObj.getMonth(dateObj.viewDate) + diffMonth,
             day: dateObj.getDay(dateObj.viewDate)))!
@@ -351,7 +356,7 @@ struct selectDate_beta: View {
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { columnIndex in
                         VStack(spacing: 0) {
-                            let calendar = Calendar.current
+                            let calendar = dateObj.calendar
                             let year = calendar.component(.year, from: viewDate)
                             let month = calendar.component(.month, from: viewDate)
                             let day = infoMonth.getDate(rowIndex, columnIndex, infoMonth.noWeekFirstDate)
@@ -360,7 +365,7 @@ struct selectDate_beta: View {
                             
                             if infoMonth.rangeMonth ~= day {
                                 Button {
-                                    let calendar = Calendar.current
+                                    let calendar = dateObj.calendar
                                     var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
                                     components.day = day
                                     date = calendar.date(from: components)!
@@ -388,7 +393,7 @@ struct selectDate_beta: View {
     }
     
     func compareDate(_ date: Date, currentDate: Date = Date()) -> Bool {
-        let calendar = Calendar.current
+        let calendar = dateObj.calendar
         guard calendar.component(.year, from: date) == calendar.component(.year, from: currentDate) else {
             return false
         }
@@ -407,7 +412,7 @@ struct selectDateTab: View {
     @EnvironmentObject var dateObj: DateObject
     @Binding var date: Date
     let width: CGFloat
-    let calendar: Calendar = Calendar.current
+    //let calendar: Calendar = Calendar.current
     var body: some View {
         if #available(iOS 17.0, *) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -426,7 +431,7 @@ struct selectDateTab: View {
             .onChange(of: dateObj.selection) { _ in
                 dateObj.updateDateObj()
                 
-                let calendar = Calendar.current
+                let calendar = dateObj.calendar
                 var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
                 components.year = dateObj.yearView
                 components.month = dateObj.monthView
@@ -467,7 +472,8 @@ struct selectMinute: View {
     let diff: Int = 5
     init(date: Binding<Date>) {
         self._date = date
-        self._index = State(initialValue: Int((round(Double(Calendar.current.component(.minute, from: date.wrappedValue))) / Double(5))) * 5)
+        let min = DateObject().calendar.component(.minute, from: date.wrappedValue)
+        self._index = State(initialValue: min)
     }
     var body: some View {
         HorizontalWheelPicker_cigma(initialCenterItem: index, numItem: 9, items: createMinuteArray(diff: diff)) { index in

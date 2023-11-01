@@ -9,16 +9,18 @@ import SwiftUI
 import EventKit
 
 struct RecurrencePicker: View {
-    @State var ekEvent: EKEvent = createEvent(day: 5)
+    @Binding var ekEvent: EKEvent
     @State private var isValid: Bool = false
     @StateObject private var recurrenceRuleObj: RecurrenceRuleObj
     
-    @State private var date: Date = Date()
-    @State private var selectedItem: String = "日"
+    let date: Date
+    let fontSize: CGFloat = 12
     
-    init() {
-        let recurrenceRules: [EKRecurrenceRule]? = createEvent(day: 5).hasRecurrenceRules ? createEvent(day: 5).recurrenceRules : nil
+    init(ekEvent: Binding<EKEvent>) {
+        self._ekEvent = ekEvent
+        let recurrenceRules: [EKRecurrenceRule]? = ekEvent.wrappedValue.recurrenceRules
         self._recurrenceRuleObj = StateObject(wrappedValue: RecurrenceRuleObj(recurrenceRules: recurrenceRules, date: Date()))
+        self.date = ekEvent.wrappedValue.startDate
     }
     
     var body: some View {
@@ -28,37 +30,41 @@ struct RecurrencePicker: View {
             let width = geometry.size.width
             let height = geometry.size.height
             let paddingTenPer = width / CGFloat(10)
-            let paddingTen: CGFloat = 10
+            let paddingTen: CGFloat = 12
             VStack {
                 Button {
                     isValid.toggle()
                 } label: {
-                    HStack {
-                        Text("繰り返し間隔")
+                    HStack(alignment: .top) {
+                        Text("繰り返し")
                             .padding(EdgeInsets(top: 0, leading: paddingTenPer, bottom: paddingTen, trailing: 0))
                         Spacer()
-                        Text("\(selectedItem)")
-                            .fontWeight(.bold)
-                            .padding(EdgeInsets(top: 0, leading: 0, bottom: paddingTen, trailing: 0))
-                            .frame(width: width / 2 - 15)
+                        VStack(alignment: .trailing) {
+                            Text("\(recurrenceRuleObj.eventStr)")
+                                .font(.system(size: fontSize,weight: .bold))
+                                .frame(minWidth: width / 4)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(width: width / 2, alignment: .trailing)
+                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: width * 0.05))
                     }
                 }
                 .foregroundColor(.black)
                 .sheet(isPresented: $isValid) {
-                   // ekEvent.removeRecurrenceRule(recurrenceRule)
-                    
+                    if let complete = recurrenceRuleObj.complete,
+                       complete {
+                        recurrenceRuleObj.translation(ekEvent: ekEvent)
+                    } else {
+                        recurrenceRuleObj.initReset(recurrenceRules: self.recurrenceRuleObj.recurrenceRules, date: Date())
+                    }
                 } content: {
                     RecurrenceSheet(recurrenceRuleObj: recurrenceRuleObj)
-                    //.frame(width: width, height: height)
                 }
                 
             }
-            .frame(width: width, height: height)
-            
+            .frame(height: 25)
+            .padding(EdgeInsets(top: paddingTen, leading: 0, bottom: paddingTen, trailing: 0))
         }
-        .frame(height: 150)
-        
-        
     }
 }
 
@@ -66,92 +72,7 @@ struct RecurrenceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var recurrenceRuleObj: RecurrenceRuleObj
     let weeks = getInfoMonth(date: Date()).getWeek()
-    
-    var isValid: Bool {
-        recurrenceRuleObj.frequency == nil ? false : true
-    }
-    
-    @State private var switchMonthWeek: Bool = true
-    @State private var isWeekYear: Bool = false
-    
-    var daysWeekToInt: [Int] {
-        guard let daysWeek = recurrenceRuleObj.selectedDaysWeek else { return [-1] }
-        return daysWeek.map { $0.dayOfTheWeek.rawValue }
-    }
-    
-    var selectedMonthWeekItem: String {
-        guard let element = recurrenceRuleObj.ekMonthWeekItem.first(where: {
-            $0.value == daysWeekToInt.sorted(by: { $0 < $1 })
-        }) else { return recurrenceRuleObj.monthWeekItem[0] }
-        
-        return element.key
-    }
-    
-    var selectedSetPositions: Int {
-        guard let setPositions = recurrenceRuleObj.setPositions else { return recurrenceRuleObj.numWeekMonth[0] }
-        return setPositions.first!.intValue
-    }
-    
-    var daysMonthToInt: [Int] {
-        guard let daysMonth = recurrenceRuleObj.selectedDaysMonth else { return [-1] }
-        return daysMonth.map { $0.intValue }
-    }
-    
-    var monthsYearToInt: [Int] {
-        guard let monthsYear = recurrenceRuleObj.selectedMonthsYear else { return [-1] }
-        return monthsYear.map { $0.intValue }
-    }
-    
-    var eventStr: String {
-        let interval = recurrenceRuleObj.interval
-        var str = "\(interval == 1 ? "毎" : "\(interval)")\(recurrenceRuleObj.intervalUnit)"
-        print(str)
-        switch recurrenceRuleObj.frequency {
-        case .daily:
-            print(str)
-            guard interval != 1 else { break }
-            str = "\(str)に"
-        case .weekly:
-            var weekStr = ""
-            guard daysWeekToInt.first != -1 else { return weekStr }
-            let weeksLong = daysWeekToInt.sorted(by: { $0 < $1 }).map({ weeks[$0 - 1] })
-            print("\(daysWeekToInt[0])")
-            for week in weeksLong {
-                weekStr = "\(weekStr)\(weeksLong.firstIndex(of: week) == 0 ? " " : "、")\(week)曜日"
-            }
-            str = "\(str)\( weekStr )に"
-        case .monthly:
-            if switchMonthWeek {
-                var dayStr = ""
-                guard daysMonthToInt.first != -1 else { return dayStr }
-                let days = daysMonthToInt.sorted(by: { $0 < $1 })
-                for day in days {
-                    dayStr = "\(dayStr)\(days.firstIndex(of: day) == 0 ? " " : "、")\(day)日"
-                }
-                str = "\(str)\(dayStr)に"
-            } else {
-                guard let setPositions = recurrenceRuleObj.setPositions else { return "" }
-                str = "\(str)\(setPositions[0].intValue != -1 ? "第\(setPositions[0].intValue)" : "最後の" )\(selectedMonthWeekItem)に"
-            }
-        case .yearly:
-            var monthStr = ""
-            let months = monthsYearToInt.sorted(by: { $0 < $1 })
-            guard months.first != -1 else { return monthStr }
-            for month in months {
-                monthStr = "\(monthStr)\(month)月\(months.firstIndex(of: month) == months.count - 1 ? (isWeekYear ? "の" : "に") : "、")"
-            }
-            str = "\(str)\(monthStr)"
-            if isWeekYear {
-                guard let setPositions = recurrenceRuleObj.setPositions else { return "" }
-                str = "\(str)\(setPositions[0].intValue != -1 ? "第\(setPositions[0].intValue)" : "最後の" )\(selectedMonthWeekItem)に"
-            }
-        default:
-            return ""
-        }
-        print(str)
-        
-        return "\(str)あるイベント"
-    }
+
     
     var body: some View {
         GeometryReader { geometry in
@@ -168,8 +89,8 @@ struct RecurrenceSheet: View {
                         if fre == nil { recurrenceRuleObj.interval = 1 }
                         recurrenceRuleObj.reset(frequency: nil)
                         recurrenceRuleObj.reset(frequency: fre)
-                        switchMonthWeek = true
-                        isWeekYear = false
+                        recurrenceRuleObj.switchMonthWeek = true
+                        recurrenceRuleObj.isWeekYear = false
                     }
                     .pickerStyle(.segmented)
                     .padding(padding)
@@ -183,8 +104,8 @@ struct RecurrenceSheet: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(padding)
-                    if isValid {
-                        Text(eventStr)
+                    if recurrenceRuleObj.isValid {
+                        Text("\(recurrenceRuleObj.eventStr)\(recurrenceRuleObj.frequency == .daily && recurrenceRuleObj.interval == 1 ? "" : "に")あるイベント")
                             .font(.system(size: 11))
                             .padding(EdgeInsets(top: 0, leading: padding, bottom: 0, trailing: padding))
                             .frame(width: width, alignment: .leading)
@@ -192,7 +113,7 @@ struct RecurrenceSheet: View {
                     
                     //日/その他----------------------------------------------
                     HStack(spacing: 0) {
-                        if isValid {
+                        if recurrenceRuleObj.isValid {
                             VerticalWheelPicker(initialCenterItem: recurrenceRuleObj.interval, numItem: 3, items: Array(1...555)) { item in
                                 Text(item == 1 ? "毎" : "\(item)")
                                     .font(.system(size: 14))
@@ -209,7 +130,7 @@ struct RecurrenceSheet: View {
                     .background(.white)
                     .frame(width: width, height: height * 0.16, alignment: .leading)
                     .padding(EdgeInsets(top: padding, leading: 0, bottom: padding * 2, trailing: 0))
-                    .animation(.easeIn, value: isValid)
+                    .animation(.easeIn, value: recurrenceRuleObj.isValid)
                     
                     switch recurrenceRuleObj.frequency {
                         //週----------------------------------------------------
@@ -217,7 +138,7 @@ struct RecurrenceSheet: View {
                         HStack(spacing: 0) {
                             ForEach(1...weeks.count, id: \.self) { weekDay in
                                 Button {
-                                    if daysWeekToInt.contains(weekDay) {
+                                    if recurrenceRuleObj.daysWeekToInt.contains(weekDay) {
                                         recurrenceRuleObj.removeDayWeek(dayWeek: weekDay)
                                     } else {
                                         recurrenceRuleObj.addDayWeek(dayWeek: weekDay)
@@ -227,25 +148,25 @@ struct RecurrenceSheet: View {
                                         .font(.system(size: 14))
                                         .underline(color:
                                                     Calendar.current.component(.weekday, from: Date()) == weekDay ?
-                                                   ( daysWeekToInt.contains(weekDay) ? .white : .black ) : .clear
+                                                   (recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? .white : .black ) : .clear
                                         )
-                                        .foregroundStyle(daysWeekToInt.contains(weekDay) ? .white : .black)
+                                        .foregroundStyle(recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? .white : .black)
                                         .frame(width: 26, height: 26)
-                                        .background(daysWeekToInt.contains(weekDay) ? .black : .white)
+                                        .background(recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? .black : .white)
                                         .cornerRadius(13)
-                                        .frame(width: (width - padding) / 7)
+                                        .frame(width: abs(width - padding) / 7)
                                 }
                             }
                         }
                         //月----------------------------------------------------
                     case .monthly:
-                        Picker("月か曜日", selection: $switchMonthWeek) {
+                        Picker("月か曜日", selection: $recurrenceRuleObj.switchMonthWeek) {
                             Text("日付").tag(true)
                             Text("曜日").tag(false)
                         }
                         .pickerStyle(.segmented)
                         .frame(width: width / 2)
-                        .onChange(of: switchMonthWeek) { bool in
+                        .onChange(of: recurrenceRuleObj.switchMonthWeek) { bool in
                             /*
                              recurrenceRuleObj.reset(frequency: nil)
                              if bool {
@@ -254,7 +175,7 @@ struct RecurrenceSheet: View {
                              recurrenceRuleObj.reset(frequency: .monthly, element: .week)
                              }*/
                         }
-                        if switchMonthWeek {
+                        if recurrenceRuleObj.switchMonthWeek {
                             VStack(spacing: 0) {
                                 ForEach(0..<5, id: \.self) { row in
                                     HStack(spacing: 0) {
@@ -262,7 +183,7 @@ struct RecurrenceSheet: View {
                                             let day = row * 7 + (column + 1)
                                             if 1...31 ~= day {
                                                 Button {
-                                                    if daysMonthToInt.contains(day){
+                                                    if recurrenceRuleObj.daysMonthToInt.contains(day){
                                                         recurrenceRuleObj.removeDayMonth(day: day)
                                                     } else {
                                                         recurrenceRuleObj.addDayMonth(day: day)
@@ -272,21 +193,19 @@ struct RecurrenceSheet: View {
                                                         .font(.system(size: 13))
                                                         .underline(color:
                                                                     Calendar.current.component(.day, from: Date()) == day ?
-                                                                   ( daysMonthToInt.contains(day) ? .white : .black ) : .clear
+                                                                   (recurrenceRuleObj.daysMonthToInt.contains(day) ? .white : .black ) : .clear
                                                         )
-                                                        .foregroundStyle(daysMonthToInt.contains(day) ? .white : .black)
+                                                        .foregroundStyle(recurrenceRuleObj.daysMonthToInt.contains(day) ? .white : .black)
                                                 }
                                                 .frame(width: 26, height: 26)
-                                                .background(daysMonthToInt.contains(day) ? .black : .white)
+                                                .background(recurrenceRuleObj.daysMonthToInt.contains(day) ? .black : .white)
                                                 .cornerRadius(13)
                                                 .clipped()
-                                                //.padding(EdgeInsets(top: padding, leading: 0, bottom: padding, trailing: 0))
                                                 .padding()
-                                                .frame(width: (width - padding) / 7, height: (height * 0.4) / 5)
+                                                .frame(width: abs(floor((width - padding) / 7)), height: (height * 0.4) / 5)
                                             } else {
                                                 Text("")
-                                                //.padding(padding)
-                                                    .frame(width: (width - padding) / 7)
+                                                    .frame(width: abs(width - padding) / 7)
                                             }
                                         }
                                     }
@@ -294,7 +213,7 @@ struct RecurrenceSheet: View {
                             }
                         } else {
                             HStack(spacing: 0) {
-                                VerticalWheelPicker(initialCenterItem: selectedSetPositions, numItem: 3, items: recurrenceRuleObj.numWeekMonth) { num in
+                                VerticalWheelPicker(initialCenterItem: recurrenceRuleObj.selectedSetPositions, numItem: 3, items: recurrenceRuleObj.numWeekMonth) { num in
                                     Text(num != -1 ? "第\(num)" : "最後" )
                                 } onChangeEvent: { num in
                                     recurrenceRuleObj.setPositions = [NSNumber(value: num)]
@@ -302,7 +221,7 @@ struct RecurrenceSheet: View {
                                 .frame(width: 50, height: 120)
                                 .padding(EdgeInsets(top: padding, leading: 0, bottom: padding, trailing: 0))
                                 
-                                VerticalWheelPicker(initialCenterItem: selectedMonthWeekItem, numItem: 3, items: recurrenceRuleObj.monthWeekItem) { item in
+                                VerticalWheelPicker(initialCenterItem: recurrenceRuleObj.selectedMonthWeekItem, numItem: 3, items: recurrenceRuleObj.monthWeekItem) { item in
                                     Text(item)
                                 } onChangeEvent: { item in
                                     recurrenceRuleObj.selectedDaysWeek = recurrenceRuleObj.ekMonthWeekItem[item]!.map { EKRecurrenceDayOfWeek(EKWeekday(rawValue: $0)!) }
@@ -319,7 +238,7 @@ struct RecurrenceSheet: View {
                                 ForEach(0..<6, id: \.self) { column in
                                     let month = row * 6 + column + 1
                                     Button {
-                                        if monthsYearToInt.contains(month) {
+                                        if recurrenceRuleObj.monthsYearToInt.contains(month) {
                                             recurrenceRuleObj.removeMonthYear(month: month)
                                         } else {
                                             recurrenceRuleObj.addMonthYear(month: month)
@@ -329,25 +248,25 @@ struct RecurrenceSheet: View {
                                             .font(.system(size: 13))
                                             .underline(color:
                                                         Calendar.current.component(.month, from: Date()) == month ?
-                                                       ( monthsYearToInt.contains(month) ? .white : .black ) : .clear
+                                                       (recurrenceRuleObj.monthsYearToInt.contains(month) ? .white : .black ) : .clear
                                             )
-                                            .foregroundStyle(monthsYearToInt.contains(month) ? .white : .black)
+                                            .foregroundStyle(recurrenceRuleObj.monthsYearToInt.contains(month) ? .white : .black)
                                             .frame(width: 26, height: 26)
-                                            .background(monthsYearToInt.contains(month) ? .black : .white)
+                                            .background(recurrenceRuleObj.monthsYearToInt.contains(month) ? .black : .white)
                                             .cornerRadius(13)
-                                            .frame(width: (width - padding) / 7)
+                                            .frame(width: abs(width - padding) / 7)
                                             .padding(EdgeInsets(top: padding, leading: 0, bottom: padding, trailing: 0))
                                     }
-                                    .frame(width: (width - padding) / 6, height: 50)
+                                    .frame(width: abs(width - padding) / 6, height: 50)
                                 }
                             }
                         }
                         VStack {
-                            Toggle("曜日", isOn: $isWeekYear)
+                            Toggle("曜日", isOn: $recurrenceRuleObj.isWeekYear)
                                 .frame(width: 100)
                                 .padding(padding)
                                 .frame(width: width, alignment: .trailing)
-                                .onChange(of: isWeekYear) { bool in
+                                .onChange(of: recurrenceRuleObj.isWeekYear) { bool in
                                     /*
                                      if bool {
                                      recurrenceRuleObj.reset(frequency: .monthly, element: .week)
@@ -357,9 +276,9 @@ struct RecurrenceSheet: View {
                                      }
                                      */
                                 }
-                            if isWeekYear {
+                            if recurrenceRuleObj.isWeekYear {
                                 HStack(spacing: 0) {
-                                    VerticalWheelPicker(initialCenterItem: selectedSetPositions, numItem: 3, items: recurrenceRuleObj.numWeekMonth) { num in
+                                    VerticalWheelPicker(initialCenterItem: recurrenceRuleObj.selectedSetPositions, numItem: 3, items: recurrenceRuleObj.numWeekMonth) { num in
                                         Text(num != -1 ? "第\(num)" : "最後" )
                                     } onChangeEvent: { num in
                                         recurrenceRuleObj.setPositions = [NSNumber(value: num)]
@@ -367,7 +286,7 @@ struct RecurrenceSheet: View {
                                     .frame(width: 50, height: 120)
                                     .padding(EdgeInsets(top: padding, leading: 0, bottom: padding, trailing: 0))
                                     
-                                    VerticalWheelPicker(initialCenterItem: selectedMonthWeekItem, numItem: 3, items: recurrenceRuleObj.monthWeekItem) { item in
+                                    VerticalWheelPicker(initialCenterItem: recurrenceRuleObj.selectedMonthWeekItem, numItem: 3, items: recurrenceRuleObj.monthWeekItem) { item in
                                         Text(item)
                                     } onChangeEvent: { item in
                                         recurrenceRuleObj.selectedDaysWeek = recurrenceRuleObj.ekMonthWeekItem[item]!.map { EKRecurrenceDayOfWeek(EKWeekday(rawValue: $0)!)
@@ -378,7 +297,7 @@ struct RecurrenceSheet: View {
                                 }
                             }
                         }
-                        .animation(.default, value: isWeekYear)
+                        .animation(.default, value: recurrenceRuleObj.isWeekYear)
                         .onAppear {
                             recurrenceRuleObj.reset(frequency: .monthly, element: .week)
                         }
@@ -395,6 +314,7 @@ struct RecurrenceSheet: View {
                 .toolbar() {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
+                            recurrenceRuleObj.complete = false
                             dismiss()
                         } label: {
                             Text("キャンセル")
@@ -406,7 +326,7 @@ struct RecurrenceSheet: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            recurrenceRuleObj.allPrint()
+                            recurrenceRuleObj.complete = true
                             dismiss()
                         } label: {
                             Text("完了")
@@ -439,6 +359,10 @@ class RecurrenceRuleObj: ObservableObject {
     @Published var selectedMonthsYear: [NSNumber]?
     @Published var setPositions: [NSNumber]?
     var date: Date
+    
+    @Published var switchMonthWeek: Bool = true
+    @Published var isWeekYear: Bool = false
+    var complete: Bool?
     
     init(recurrenceRules: [EKRecurrenceRule]?, date: Date) {
         self.recurrenceRules = recurrenceRules
@@ -480,16 +404,6 @@ class RecurrenceRuleObj: ObservableObject {
         "年": EKRecurrenceFrequency.yearly,
     ]
     
-    /*
-     let numWeekMonth = [
-     "第1": 1,
-     "第2": 2,
-     "第3": 3,
-     "第4": 4,
-     "第5": 5,
-     "最後": -1
-     ]*/
-    
     let numWeekMonth = [
         1,
         2,
@@ -516,6 +430,86 @@ class RecurrenceRuleObj: ObservableObject {
         default:
             return ""
         }
+    }
+    
+    var isValid: Bool {
+        self.frequency == nil ? false : true
+    }
+    
+    var daysWeekToInt: [Int] {
+        guard let daysWeek = self.selectedDaysWeek else { return [-1] }
+        return daysWeek.map { $0.dayOfTheWeek.rawValue }
+    }
+    
+    var selectedMonthWeekItem: String {
+        guard let element = self.ekMonthWeekItem.first(where: {
+            $0.value == daysWeekToInt.sorted(by: { $0 < $1 })
+        }) else { return self.monthWeekItem[0] }
+        
+        return element.key
+    }
+    
+    var selectedSetPositions: Int {
+        guard let setPositions = self.setPositions else { return self.numWeekMonth[0] }
+        return setPositions.first!.intValue
+    }
+    
+    var daysMonthToInt: [Int] {
+        guard let daysMonth = self.selectedDaysMonth else { return [-1] }
+        return daysMonth.map { $0.intValue }
+    }
+    
+    var monthsYearToInt: [Int] {
+        guard let monthsYear = self.selectedMonthsYear else { return [-1] }
+        return monthsYear.map { $0.intValue }
+    }
+    
+    var eventStr: String {
+        let interval = self.interval
+        var str = "\(interval == 1 ? "毎" : "\(interval)")\(self.intervalUnit)"
+        let freq = self.frequency
+        switch freq {
+        case .daily:
+            guard interval != 1 else { break }
+            str = "\(str)"
+        case .weekly:
+            var weekStr = ""
+            guard daysWeekToInt.first != -1 else { return "weekStr" }
+            let weeksLong = daysWeekToInt.sorted(by: { $0 < $1 }).map({ getInfoMonth(date: Date()).getWeek()[$0 - 1] })
+            for week in weeksLong {
+                weekStr = "\(weekStr)\(weeksLong.firstIndex(of: week) == 0 ? " " : "、")\(week)曜日"
+            }
+            str = "\(str)\( weekStr )"
+        case .monthly:
+            if self.switchMonthWeek {
+                var dayStr = ""
+                guard daysMonthToInt.first != -1 else { return dayStr }
+                let days = daysMonthToInt.sorted(by: { $0 < $1 })
+                for day in days {
+                    dayStr = "\(dayStr)\(days.firstIndex(of: day) == 0 ? " " : "、")\(day)日"
+                }
+                str = "\(str)\(dayStr)"
+            } else {
+                guard let setPositions = self.setPositions else { return "" }
+                str = "\(str)\(setPositions[0].intValue != -1 ? "第\(setPositions[0].intValue)" : "最後の" )\(selectedMonthWeekItem)"
+            }
+        case .yearly:
+            var monthStr = ""
+            let months = monthsYearToInt.sorted(by: { $0 < $1 })
+            guard months.first != -1 else { return monthStr }
+            for month in months {
+                monthStr = "\(monthStr)\(month)月\(months.firstIndex(of: month) == months.count - 1 ? (self.isWeekYear ? "の" : "") : "、")"
+            }
+            str = "\(str)\(monthStr)"
+            if self.isWeekYear {
+                guard let setPositions = self.setPositions else { return "" }
+                str = "\(str)\(setPositions[0].intValue != -1 ? "第\(setPositions[0].intValue)" : "最後の" )\(selectedMonthWeekItem)"
+            }
+        default:
+            return "なし"
+        }
+        
+        return "\(str)"//\(freq == .daily && interval == 1 ? "" : "に")あるイベント"//recurrenceRuleObj.eventStr!
     }
     
     func addDayWeek(dayWeek: Int) {
@@ -569,15 +563,6 @@ class RecurrenceRuleObj: ObservableObject {
             let weekDay = calendar.component(.weekday, from: date)
             self.selectedDaysWeek = [EKRecurrenceDayOfWeek(EKWeekday(rawValue: weekDay)!)]
         case .monthly:
-            /*
-             if element == .week {
-             self.selectedDaysWeek = [EKRecurrenceDayOfWeek(EKWeekday.sunday)]
-             self.setPositions = [NSNumber(value: 1)]
-             return
-             }
-             let day = calendar.component(.day, from: date)
-             self.selectedDaysMonth = [NSNumber(value: day)]
-             */
             self.selectedDaysWeek = [EKRecurrenceDayOfWeek(EKWeekday.sunday)]
             self.setPositions = [NSNumber(value: 1)]
             
@@ -601,6 +586,54 @@ class RecurrenceRuleObj: ObservableObject {
         }
     }
     
+    
+    func initReset(recurrenceRules: [EKRecurrenceRule]?, date: Date) {
+        self.recurrenceRules = recurrenceRules
+        if recurrenceRules != nil {
+            for rule in recurrenceRules! {
+                self.frequency = rule.frequency
+                if rule.recurrenceEnd != nil { self.recurrenceEnd = rule.recurrenceEnd
+                    self.interval = rule.interval }
+                if rule.daysOfTheWeek != nil { self.selectedDaysWeek = rule.daysOfTheWeek }
+                if rule.daysOfTheMonth != nil { self.selectedDaysMonth = rule.daysOfTheMonth }
+                if rule.daysOfTheYear != nil { self.selectedDaysYear = rule.daysOfTheYear }
+                if rule.weeksOfTheYear != nil { self.selectedWeeksYear = rule.weeksOfTheYear }
+                if rule.monthsOfTheYear != nil { self.selectedMonthsYear = rule.monthsOfTheYear }
+                if rule.setPositions != nil { self.setPositions = rule.setPositions }
+            }
+        } else {
+            self.frequency = nil
+            self.reset(frequency: nil)
+        }
+        self.date = date
+    }
+    // ここから
+    // ルールの入れ替え
+    func translation(ekEvent: EKEvent) {
+        if let rules = recurrenceRules {
+            for rule in rules {
+                ekEvent.removeRecurrenceRule(rule)
+            }
+        }
+        
+        guard let freq = self.frequency else { return }
+        
+        let newRule = EKRecurrenceRule(
+            recurrenceWith: freq, interval: self.interval,
+            daysOfTheWeek: freq == .weekly || freq == .daily ? self.selectedDaysWeek :
+                ( freq == .monthly ? (self.switchMonthWeek ? nil : self.selectedDaysWeek) : (self.isWeekYear ? self.selectedDaysWeek : nil)),
+            daysOfTheMonth: freq == .monthly ? (switchMonthWeek ? self.selectedDaysMonth : nil) : nil,
+            monthsOfTheYear: self.selectedMonthsYear,
+            weeksOfTheYear: nil,
+            daysOfTheYear: nil,
+            setPositions: !self.switchMonthWeek || self.isWeekYear ? self.setPositions : nil, end: self.recurrenceEnd)
+        
+        self.recurrenceRules = [newRule]
+        self.reset(frequency: freq)
+        self.initReset(recurrenceRules: [newRule], date: date)
+        ekEvent.addRecurrenceRule(newRule)
+    }
+    /*
     func allPrint() {
         print(self.interval)
         print(self.selectedDaysWeek)
@@ -610,8 +643,6 @@ class RecurrenceRuleObj: ObservableObject {
         print(self.selectedMonthsYear)
         print(self.setPositions)
     }
+    */
 }
 
-#Preview {
-    RecurrencePicker()
-}

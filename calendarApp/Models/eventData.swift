@@ -42,8 +42,13 @@ class EventData: ObservableObject {
     init(isDeleteAfterEndDate: Bool = false) {
         self.isDeleteAfterEndDate = isDeleteAfterEndDate
         self.defaultCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
-        self.ekEvent.startDate = Date()
-        self.ekEvent.endDate = Date()
+        let calendar = DateObject().calendar
+        let min = Int((Double(calendar.component(.minute, from: Date())) / Double(5)).rounded(.toNearestOrAwayFromZero)) * 5
+        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
+        components.minute = min >= 60 ? 0 : min
+        let date = calendar.date(from: components)!
+        self.ekEvent.startDate = date
+        self.ekEvent.endDate = date
     }
 }
 

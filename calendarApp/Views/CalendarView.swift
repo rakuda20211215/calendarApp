@@ -128,6 +128,7 @@ class DateObject: ObservableObject {
     @Published var selection: Int? = 0
     //@Published var scrollID: Int?
     var oldSelection: Int = 0
+    let calendar: Calendar
     
     init(viewDate: Date = Date()) {
         self.viewDate = viewDate
@@ -135,6 +136,10 @@ class DateObject: ObservableObject {
         self.month = Calendar.current.component(.month, from: viewDate)
         self.yearView = year
         self.monthView = month
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Tokyo") ?? calendar.timeZone
+        calendar.locale = Locale(identifier: "ja_JP")
+        self.calendar = calendar
     }
     
     func initializObj(date: Date) {
