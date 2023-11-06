@@ -16,9 +16,20 @@ struct CalendarView: View {
     @State private var name: String
     @State private var ekEventDate: String = ""
     @State private var ekEventCalendar: String = ""
-    @ObservedObject private var dateObj: DateObject = DateObject()
+    @ObservedObject private var dateObj: DateObjectForMonthEvents = DateObjectForMonthEvents()
+    @ObservedObject private var eventController: EventControllerClass = EventControllerClass()
+    @State private var selection: Int = 0
+    @State private var rangeMonth: [Int] = Array<Int>(-2...2)
+    let padding: CGFloat = 5
+    
+    // イベント追加画面
+    @State private var isAddEventView: Bool = false
+    // イベント一覧
     
     init() {
+        Task {
+            await EventControllerClass().requestAccess()
+        }
         self.shoptable = modelData()
         self.name = ""
         
@@ -31,91 +42,112 @@ struct CalendarView: View {
             let CALENDAR_WIDTH = width - 8
             let CALENDAR_HEIGHT = height - 45
             ZStack {
-                Color.red.ignoresSafeArea()
+                Color.black.ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("\(dateObj.yearView)年\(dateObj.monthView)月")
-                        .foregroundColor(.white)
-                        .font(.system(size: 20, weight: .bold))
-                        .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
-                    TabView(selection: $dateObj.selection) {
-                        ForEach(dateObj.rangeMonth, id: \.self) { month in
-                            MonthCalendar(YEAR: dateObj.year, MONTH: dateObj.month + month)
-                                .background(.white)
-                                .frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT)
-                                .cornerRadius(5)
+                    // トップバー
+                    HStack {
+                        Text("\(dateObj.yearView.description)年\(dateObj.monthView)月")
+                            .foregroundColor(.white)
+                            .font(.system(size: 20, weight: .bold))
+                            .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                        Spacer()
+                        
+                        Button{
+                            
+                        } label: {
+                            Image(systemName: "v.square.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 20))
+                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                        }
+                        
+                        Button{
+                            isAddEventView.toggle()
+                        } label: {
+                            Image(systemName: "plus")
+                                .foregroundColor(.white)
+                                .font(.system(size: 20, weight: .bold))
+                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
+                        }
+                        .sheet(isPresented: $isAddEventView) {
+                            
+                        } content: {
+                            AddEventView()
+                        }
+                        
+                        Button{
+                            
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .foregroundColor(.white)
+                                .font(.system(size: 20, weight: .bold))
+                                .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         }
                     }
-                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .onReceive(dateObj.$selection) { _ in
-                        dateObj.updateDateObj()
+                    
+                    // カレンダーの日付にtapgestureを追加
+                    // カレンダー と　イベント
+                    VStack {
+                        // カレンダー
+                        VStack(spacing: 0) {
+                            TabView(selection: $selection) {
+                                MonthCalendar(eventController: dateObj.eventController, YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1)
+                                    .background(.white)
+                                    .frame(width: CALENDAR_WIDTH)
+                                    //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT)
+                                    .cornerRadius(5)
+                                    .tag(-1)
+                                
+                                MonthCalendar(eventController: dateObj.eventController, YEAR: dateObj.yearView, MONTH: dateObj.monthView)
+                                    .background(.white)
+                                    .frame(width: CALENDAR_WIDTH)
+                                    //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT / 2)
+                                    .cornerRadius(5)
+                                    .onDisappear() {
+                                        
+                                        if selection != 0 {
+                                            dateObj.updateDateObj(selection: selection)
+                                            selection = 0
+                                        }
+                                    }
+                                    .tag(0)
+                                
+                                MonthCalendar(eventController: dateObj.eventController, YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1)
+                                    .background(.white)
+                                    .frame(width: CALENDAR_WIDTH)
+                                    //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT)
+                                    .cornerRadius(5)
+                                    .tag(1)
+                            }
+                            .tabViewStyle(.page(indexDisplayMode: .never))
+                        }
+                        .frame(height: CALENDAR_HEIGHT / 2 - padding)
+                        
+                        Spacer()
+                        // イベント
+                        VStack(spacing: 0) {
+                            EventList([createEvent(day: 1), createEvent(day: 2), createEvent(day: 3), createEvent(day: 4),createEvent(day: 5), createEvent(day: 6), createEvent(day: 7), createEvent(day: 8)], target: Date())
+                                .foregroundStyle(.white)
+                        }
+                        .frame(height: CALENDAR_HEIGHT / 2 - padding)
                     }
+                    .frame(height: CALENDAR_HEIGHT)
+                    
                     Spacer()
                 }
             }
+            
         }
     }
-    
-    
-    /*
-     var body: some View {
-     var ekEvents: [EKEvent] = ekEventController.getEvents()
-     VStack {
-     TextField("text", text: $name)
-     Button(action: {
-     // レコードの生成
-     let shop = userData()
-     shop.name = name
-     
-     // 保存
-     try! realm.write {
-     realm.add(shop)
-     }
-     
-     }, label: {
-     Text("追加")
-     })
-     
-     Text(shoptable.shopdata[shoptable.shopdata.count-1].name)
-     
-     Button {
-     shoptable.setter()
-     
-     ekEvents = ekEventController.getEvents(startDate: Calendar.current.date(byAdding: .day, value: -3, to: Date())!)
-     ekEventDate = ekEvents.isEmpty ? "empty" : ekEvents[0].description
-     ekEventCalendar = ekEventController.getCalendars().isEmpty ? "empty" : ekEventController.getCalendars().description
-     } label: {
-     Text("更新")
-     }
-     
-     Button {
-     var calendar: EKCalendar = ekEventController.getCalendars()[0]
-     _ = ekEventController.addEvent(calendar: calendar, title: name, startDate: Date(), endDate: Date(), isAllDay: false, timeZone: TimeZone.current)
-     } label: {
-     Text("イベント追加")
-     }
-     
-     Button {
-     _ = ekEventController.addCalendar(nameCalendar: name)
-     } label: {
-     Text("カレンダー追加")
-     }
-     
-     Spacer()
-     
-     ScrollView {
-     Text(ekEventDate)
-     Text(ekEventCalendar)
-     Text(ekEventController.checkAccess().description)
-     }
-     }
-     .padding()
-     }
-     
-     func getRealmData() -> String {
-     let realm = try! Realm()
-     
-     return realm.objects(userData.self).description
-     }*/
+}
+
+enum dateElements {
+    case year
+    case month
+    case week
+    case day
+    case hour
+    case minute
 }
 
 class DateObject: ObservableObject {
@@ -191,8 +223,83 @@ class DateObject: ObservableObject {
     func getHour(_ date: Date = Date()) -> Int {
         Calendar.current.component(.hour, from: date)
     }
+    func getMinute(_ date: Date = Date()) -> Int {
+        Calendar.current.component(.minute, from: date)
+    }
+}
+class DateObjectForMonthEvents: DateObject {
+    let eventController: EventControllerClass = EventControllerClass()
     
+    /*
+     override func updateDateObj() {
+     if self.selection! > self.oldSelection {
+     self.rangeMonth.append(self.rangeMonth[self.rangeMonth.count - 1] + 1)
+     self.rangeMonth.remove(at: 0)
+     self.monthView += 1
+     if self.monthView > 12 {
+     self.monthView = 1
+     self.yearView += 1
+     }
+     } else if self.selection! < self.oldSelection {
+     self.rangeMonth.insert(self.rangeMonth[0] - 1, at: 0)
+     self.rangeMonth.remove(at: self.rangeMonth.count - 1)
+     
+     self.monthView -= 1
+     if self.monthView < 1 {
+     self.monthView = 12
+     self.yearView -= 1
+     }
+     }
+     print(rangeMonth)
+     self.oldSelection = self.selection!
+     
+     return
+     }
+     */
     
+    func updateDateObj(selection: Int) {
+        if selection < 0 {
+            self.monthView -= 1
+            if self.monthView < 1 {
+                self.monthView = 12
+                self.yearView -= 1
+            }
+        } else {
+            self.monthView += 1
+            if self.monthView > 12 {
+                self.monthView = 1
+                self.yearView += 1
+            }
+        }
+    }
+    
+    func updateDateObj(_ rM: [Int], selection: Int) -> [Int] {
+        print("\(selection):\(self.oldSelection)")
+        var rangeMonth = rM
+        if selection > self.oldSelection {
+            rangeMonth.append(rangeMonth[rangeMonth.count - 1] + 1)
+            //rangeMonth.remove(at: 0)
+            
+            self.monthView += 1
+            if self.monthView > 12 {
+                self.monthView = 1
+                self.yearView += 1
+            }
+        } else if selection < self.oldSelection {
+            rangeMonth.insert(rangeMonth[0] - 1, at: 0)
+            //rangeMonth.remove(at: rangeMonth.count - 1)
+            
+            self.monthView -= 1
+            if self.monthView < 1 {
+                self.monthView = 12
+                self.yearView -= 1
+            }
+        }
+        print(rangeMonth)
+        self.oldSelection = selection
+        
+        return rangeMonth
+    }
 }
 
 struct CalendarView_Previews: PreviewProvider {

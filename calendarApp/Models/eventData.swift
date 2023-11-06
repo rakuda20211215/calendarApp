@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import SwiftUI
 import RealmSwift
-import EventKit
+import EventKitUI
 
 // title
 // date
@@ -42,13 +43,20 @@ class EventData: ObservableObject {
     init(isDeleteAfterEndDate: Bool = false) {
         self.isDeleteAfterEndDate = isDeleteAfterEndDate
         self.defaultCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        self.ekEvent = EKEvent(eventStore: eventController.eventStore)
+        self.ekEvent.calendar = self.defaultCalendar
         let calendar = DateObject().calendar
         let min = Int((Double(calendar.component(.minute, from: Date())) / Double(5)).rounded(.toNearestOrAwayFromZero)) * 5
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
         components.minute = min >= 60 ? 0 : min
-        let date = calendar.date(from: components)!
-        self.ekEvent.startDate = date
-        self.ekEvent.endDate = date
+        // 始まりと終わりの日付を30秒ずらす
+        components.second = 0
+        let startDate = calendar.date(from: components)!
+        self.ekEvent.startDate = startDate
+        
+        components.second = 30
+        let endDate = calendar.date(from: components)!
+        self.ekEvent.endDate = endDate
     }
 }
 
@@ -68,7 +76,7 @@ protocol EventController {
     
     // 各処理
     // 取得
-    func getEvents(startDate: Date?, endDate: Date?, year: Int?, month: Int?) -> [EKEvent]
+    func getEvents(startDate: Date?, endDate: Date?) -> [EKEvent]
     func getCalendars() -> [EKCalendar]
     // イベント追加
     func addEvent(calendar: EKCalendar,
@@ -82,18 +90,20 @@ protocol EventController {
                   notes: String?, // メモ
                   recurrenceRules: [EKRecurrenceRule]?) -> Bool
     // カレンダー追加
-    func addCalendar(nameCalendar: String) -> Bool
+    func addCalendar(nameCalendar: String, cgColor: CGColor) -> Bool
     // 消去
     func removeEvent(idEvent: String) -> Bool
 }
 
 // 純正カレンダーとの連絡
 class EventControllerClass: EventController, ObservableObject {
-    
     var eventStore: EKEventStore
+    var calendar: Calendar
     
-    init (startDate: Date = Date(), endDate: Date = Date()) {
+    
+    init () {
         self.eventStore = EKEventStore()
+        self.calendar = DateObject().calendar
         if !checkAccess() {
             self.eventStore.requestAccess(to: .event, completion: { (granted, error) in
                 if granted && error == nil {
@@ -120,9 +130,40 @@ class EventControllerClass: EventController, ObservableObject {
         }
     }
     
-    func getEvents(startDate: Date? = Date(), endDate: Date? = Date(), year: Int? = nil, month: Int? = nil) -> [EKEvent] {
+    func requestAccess() async -> Bool {
+        if !checkAccess() {
+            if #available(iOS 17.0, *) {
+                    self.eventStore.requestFullAccessToEvents { granted, error in
+                        print("re : \(granted) , ero : \(error)")
+                        if granted && error == nil {
+                            print("許可")
+                        } else {
+                        }
+                    }
+            } else {
+                // Fallback on earlier versions
+                self.eventStore.requestAccess(to: .event, completion: { (granted, error) in
+                    if granted && error == nil {
+                        print("許可")
+                    } else {
+                    }
+                })
+            }
+        }
+        return checkAccess()
+    }
+    
+    func getEvents(startDate: Date? = Date(), endDate: Date? = Date()) -> [EKEvent] {
         let predicate = eventStore.predicateForEvents(withStart: startDate!, end: endDate!, calendars: getCalendars())
         return eventStore.events(matching: predicate)
+    }
+    
+    func getEvents(year: Int?, month: Int?) -> [EKEvent] {
+        print("get")
+        let startDate = calendar.date(from: DateComponents(year: year!, month: month!, day: 1, hour: 0, minute: 0, second: 0))!
+        let endDate = calendar.date(from: DateComponents(year: year!, month: month! + 1, day: 0, hour: 23, minute: 59, second: 59))!
+        let predicate = self.eventStore.predicateForEvents(withStart: startDate, end: endDate, calendars: getCalendars())
+        return self.eventStore.events(matching: predicate)
     }
     
     func getCalendars() -> [EKCalendar] {
@@ -135,7 +176,7 @@ class EventControllerClass: EventController, ObservableObject {
                   endDate: Date,
                   isAllDay: Bool,
                   location: String? = nil,
-                  timeZone: TimeZone,
+                  timeZone: TimeZone = TimeZone(identifier: "Asia/Tokyo")!,
                   url: URL? = nil,
                   notes: String? = nil, // メモ
                   recurrenceRules: [EKRecurrenceRule]? = nil // 繰り返しルール
@@ -152,17 +193,29 @@ class EventControllerClass: EventController, ObservableObject {
         ekEvent.notes = notes
         ekEvent.recurrenceRules = recurrenceRules
         do {
-            try eventStore.save(ekEvent, span: .thisEvent)
-        } catch {
+            try eventStore.save(ekEvent, span: .thisEvent, commit: true)
+            try eventStore.commit()
+        } catch  {
             return false
         }
         return true
     }
     
-    func addCalendar(nameCalendar: String) -> Bool {
+    func addEvent(ekEvent: EKEvent) -> Bool {
+        do {
+            try self.eventStore.save(ekEvent, span: .thisEvent, commit: true)
+            try self.eventStore.commit()
+        } catch  {
+            return false
+        }
+        return true
+    }
+
+    
+    func addCalendar(nameCalendar: String, cgColor: CGColor) -> Bool {
         let calendar = EKCalendar(for: .event, eventStore: eventStore)
         calendar.title = nameCalendar
-        calendar.cgColor = CGColor.init(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
+        calendar.cgColor = cgColor
         do {
             try eventStore.saveCalendar(calendar, commit: true)
         } catch {
@@ -198,105 +251,5 @@ class CalendarDataManager {
     init(ekEvent: EKEvent, isSpan: passageType) {
         self.ekEvent = ekEvent
         self.isSpan = isSpan
-    }
-}
-
-// 純正カレンダーとの連絡
-class EventControllerMonthClass: EventController, ObservableObject {
-    var eventStore: EKEventStore
-    var calendar: Calendar
-    
-    init () {
-        self.eventStore = EKEventStore()
-        self.calendar = Calendar(identifier: .gregorian)
-        if !checkAccess() {
-            self.eventStore.requestAccess(to: .event, completion: { (granted, error) in
-                if granted && error == nil {
-                    print("許可")
-                }
-            })
-        }
-    }
-    
-    func checkAccess() -> Bool {
-        let eventStoreStatus = EKEventStore.authorizationStatus(for: .event)
-        
-        switch eventStoreStatus {
-        case .authorized: // 許可済み
-            return true
-        case .denied: // 拒否
-            return false
-        case .notDetermined: // 未選択
-            return false
-        case .restricted: // 非許可
-            return false
-        default:
-            return false
-        }
-    }
-    
-    func getEvents(startDate: Date? = nil, endDate: Date? = nil, year: Int?, month: Int?) -> [EKEvent] {
-        let startDate = calendar.date(from: DateComponents(year: year!, month: month!, day: 1, hour: 0, minute: 0, second: 0))!
-        print(startDate)
-        let endDate = calendar.date(from: DateComponents(year: year!, month: month! + 1, day: 0, hour: 23, minute: 59, second: 59))!
-        print(endDate)
-        let predicate = eventStore.predicateForEvents(withStart: startDate, end: endDate, calendars: getCalendars())
-        return eventStore.events(matching: predicate)
-    }
-    
-    func getCalendars() -> [EKCalendar] {
-        return eventStore.calendars(for: .event)
-    }
-    
-    func addEvent(calendar: EKCalendar,
-                  title: String,
-                  startDate: Date,
-                  endDate: Date,
-                  isAllDay: Bool,
-                  location: String? = nil,
-                  timeZone: TimeZone,
-                  url: URL? = nil,
-                  notes: String? = nil, // メモ
-                  recurrenceRules: [EKRecurrenceRule]? = nil // 繰り返しルール
-    ) -> Bool {
-        let ekEvent = EKEvent(eventStore: eventStore)
-        ekEvent.calendar = calendar
-        ekEvent.title = title
-        ekEvent.startDate = startDate
-        ekEvent.endDate = endDate
-        ekEvent.isAllDay = isAllDay
-        ekEvent.location = location
-        ekEvent.timeZone = timeZone
-        ekEvent.url = url
-        ekEvent.notes = notes
-        ekEvent.recurrenceRules = recurrenceRules
-        do {
-            try eventStore.save(ekEvent, span: .thisEvent)
-        } catch {
-            return false
-        }
-        return true
-    }
-    
-    func addCalendar(nameCalendar: String) -> Bool {
-        let calendar = EKCalendar(for: .event, eventStore: eventStore)
-        calendar.title = nameCalendar
-        calendar.cgColor = CGColor.init(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
-        do {
-            try eventStore.saveCalendar(calendar, commit: true)
-        } catch {
-            return false
-        }
-        return true
-    }
-    
-    func removeEvent(idEvent: String) -> Bool {
-        let event: EKEvent = eventStore.event(withIdentifier: idEvent)!
-        do {
-            try eventStore.remove(event, span: .thisEvent)
-        } catch {
-            return false
-        }
-        return true
     }
 }

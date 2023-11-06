@@ -28,7 +28,6 @@ struct RecurrencePicker: View {
         
         GeometryReader { geometry in
             let width = geometry.size.width
-            let height = geometry.size.height
             let paddingTenPer = width / CGFloat(10)
             let paddingTen: CGFloat = 12
             VStack {
@@ -94,16 +93,19 @@ struct RecurrenceSheet: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(padding)
-                    
-                    Picker("繰り返し", selection: $recurrenceRuleObj.frequency) {
-                        ForEach(recurrenceRuleObj.pickerItem
-                            .sorted(by: { $0.value.rawValue < $1.value.rawValue })
-                            .map{ $0.key }, id: \.self) { key in
-                                Text(key).tag(recurrenceRuleObj.pickerItem[key])
-                            }
+                    HStack(spacing: 0) {
+                        Text("間隔")
+                            .padding(padding)
+                        Picker("繰り返し", selection: $recurrenceRuleObj.frequency) {
+                            ForEach(recurrenceRuleObj.pickerItem
+                                .sorted(by: { $0.value.rawValue < $1.value.rawValue })
+                                .map{ $0.key }, id: \.self) { key in
+                                    Text(key).tag(recurrenceRuleObj.pickerItem[key])
+                                }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(padding)
                     }
-                    .pickerStyle(.segmented)
-                    .padding(padding)
                     if recurrenceRuleObj.isValid {
                         Text("\(recurrenceRuleObj.eventStr)\(recurrenceRuleObj.frequency == .daily && recurrenceRuleObj.interval == 1 ? "" : "に")あるイベント")
                             .font(.system(size: 11))
@@ -338,15 +340,6 @@ struct RecurrenceSheet: View {
     }
 }
 
-enum dateElements {
-    case year
-    case month
-    case week
-    case day
-    case hour
-    case minute
-}
-
 class RecurrenceRuleObj: ObservableObject {
     @Published var recurrenceRules: [EKRecurrenceRule]?
     @Published var frequency: EKRecurrenceFrequency?
@@ -395,7 +388,7 @@ class RecurrenceRuleObj: ObservableObject {
             self.monthWeekItem[8]: [1,7],
             self.monthWeekItem[9]: [1,2,3,4,5,6,7]
         ]
-    }
+}
     
     let pickerItem = [
         "日": EKRecurrenceFrequency.daily,

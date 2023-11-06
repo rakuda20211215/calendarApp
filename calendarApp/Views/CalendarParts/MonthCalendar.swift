@@ -10,22 +10,55 @@ import UIKit
 import EventKit
 
 struct MonthCalendar: View {
-    let week: [String] = ["日","月","火","水","木","金","土"]
-    var startWeek: String = "日"
+    let ekEvents: [EKEvent]?
+    let eventController: EventControllerClass
+    
+    var startWeek: String
     let NUMWEEK = 7
     let NUMROWMONTH = 6
     let YEAR: Int
     let MONTH: Int
+    let infoMonth: getInfoMonth
+    let week: [String]
     
-    let LINE_COLOR = Color.gray
+    // 日付に所属するイベント一覧有効化
+    @State private var showEvents: Bool = false
+    
+    init(_ ekEvents: [EKEvent], YEAR: Int, MONTH: Int) {
+        self.YEAR = YEAR
+        self.MONTH = MONTH
+        self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
+        self.week = infoMonth.getWeek()
+        self.startWeek = self.week[0]
+        self.eventController = EventControllerClass()
+        if eventController.checkAccess() {
+            self.ekEvents = ekEvents
+        } else {
+            self.ekEvents = nil
+        }
+    }
+    
+    init(eventController: EventControllerClass, YEAR: Int, MONTH: Int) {
+        self.YEAR = YEAR
+        self.MONTH = MONTH
+        self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
+        self.week = infoMonth.getWeek()
+        self.startWeek = self.week[0]
+        self.eventController = eventController
+        if eventController.checkAccess() {
+            self.ekEvents = eventController.getEvents(year: YEAR, month: MONTH)
+        } else {
+            self.ekEvents = nil
+        }
+    }
+    
+    let LINE_COLOR = Color.gray.opacity(0.5)
     
     var body: some View {
         let indexStartWeek = week.firstIndex(of: startWeek)!
         let customWeek: [String] = createCustomWeek(indexStartWeek)
-        let infoMonth = getInfoMonth(year: YEAR, month: MONTH)
         let CARRYOVER = infoMonth.noWeekFirstDate
         // イベント取得
-        let ekEvents: [EKEvent] = EventControllerMonthClass().getEvents(year: YEAR, month: MONTH)
         
         GeometryReader { geometry in
             let width = geometry.size.width
@@ -45,6 +78,7 @@ struct MonthCalendar: View {
                     HStack(spacing: 0) {
                         ForEach(0..<7, id: \.self) { index in
                             Text(customWeek[index])
+                                .foregroundStyle(.black)
                                 .frame(width: WIDTH_DATE,height: HEIGHT_WEEK)
                                 .font(.system(size: 10))
                         }
@@ -65,6 +99,7 @@ struct MonthCalendar: View {
                                         
                                         //日付
                                         Text(infoMonth.getDate(rowIndex, columnIndex, CARRYOVER).description)
+                                            .foregroundStyle(.black)
                                             .frame(width: WIDTH_DATE, height: HEIGHT_DATE, alignment: .center)
                                             .font(.system(size: 10))
                                             .frame(width: WIDTH_DATE)
@@ -79,24 +114,7 @@ struct MonthCalendar: View {
                         .frame(height: HEIGHT_ROW_MONTH, alignment: .top)
                     }
                 }
-                // イベント
-                EventSeal(ekEvent: createEvent(day: 2),
-                          countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
-                          WIDTH_DATE: WIDTH_DATE, HEIGHT_DATE: HEIGHT_DATE,
-                          HEIGHT_EVENT: HEIGHT_EVENT,
-                          HEIGHT_EVENT_SPACE: HEIGHT_EVENT_SPACE,
-                          CARRYOVER: CARRYOVER)
-                .padding(EdgeInsets(top: HEIGHT_WEEK, leading: 0, bottom: 0, trailing: 0))
-                
-                EventSeal(ekEvent: createEvent(day: 3),
-                          countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
-                          WIDTH_DATE: WIDTH_DATE, HEIGHT_DATE: HEIGHT_DATE,
-                          HEIGHT_EVENT: HEIGHT_EVENT,
-                          HEIGHT_EVENT_SPACE: HEIGHT_EVENT_SPACE,
-                          CARRYOVER: CARRYOVER)
-                    .padding(EdgeInsets(top: HEIGHT_WEEK, leading: 0, bottom: 0, trailing: 0))
-                
-                if !ekEvents.isEmpty {
+                if let ekEvents = ekEvents {
                     ForEach(ekEvents, id: \.self) { ekEvent in
                         EventSeal(ekEvent: ekEvent,
                                   countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
@@ -143,11 +161,17 @@ func createEvent(day: Int) -> EKEvent {
     let ekEvent = EKEvent(eventStore: eventStore)
     let calendar = EKCalendar(for: .event, eventStore: eventStore)
     calendar.title = "test"
-    calendar.cgColor = CGColor(red: 0.3 * CGFloat(day), green: 0.7 * CGFloat(day), blue: 0.2, alpha: 1)
+    let r: Int = Array(1...30).randomElement()!
+    let g: Int = Array(1...30).randomElement()!
+    let b: Int = Array(1...30).randomElement()!
+    calendar.cgColor = CGColor(red: CGFloat(r) / CGFloat(30), green: CGFloat(g) /  CGFloat(30), blue: CGFloat(b) / CGFloat(30), alpha: 1)
     ekEvent.calendar = calendar
-    ekEvent.title = "titleTest "
-    ekEvent.startDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2023, month: 10, day: day))
-    ekEvent.endDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2023, month: 11, day: 0))
+    ekEvent.title = "titleTest \(day)"
+    ekEvent.location = "山口県"
+    let year = DateObject().getYear(Date())
+    let month = DateObject().getMonth(Date())
+    ekEvent.startDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: year, month: month, day: day, hour: r % 24))
+    ekEvent.endDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: year, month: month, day: day, hour: r % 24 + 10))
     ekEvent.isAllDay = false
     
     return ekEvent
@@ -195,6 +219,6 @@ class getInfoMonth {
 
 struct MonthCalendar_Previews: PreviewProvider {
     static var previews: some View {
-        MonthCalendar(YEAR: 2023, MONTH: 10)
+        MonthCalendar(EventControllerClass().getEvents(), YEAR: 2023, MONTH: 11)
     }
 }
