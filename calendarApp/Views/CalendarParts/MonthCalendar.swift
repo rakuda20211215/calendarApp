@@ -11,7 +11,6 @@ import EventKit
 
 struct MonthCalendar: View {
     let ekEvents: [EKEvent]?
-    let eventController: EventControllerClass
     
     var startWeek: String
     let NUMWEEK = 7
@@ -24,18 +23,13 @@ struct MonthCalendar: View {
     // 日付に所属するイベント一覧有効化
     @State private var showEvents: Bool = false
     
-    init(_ ekEvents: [EKEvent], YEAR: Int, MONTH: Int) {
+    init(_ ekEvents: [EKEvent]? = nil, YEAR: Int, MONTH: Int) {
         self.YEAR = YEAR
         self.MONTH = MONTH
         self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
         self.week = infoMonth.getWeek()
         self.startWeek = self.week[0]
-        self.eventController = EventControllerClass()
-        if eventController.checkAccess() {
-            self.ekEvents = ekEvents
-        } else {
-            self.ekEvents = nil
-        }
+        self.ekEvents = ekEvents
     }
     
     init(eventController: EventControllerClass, YEAR: Int, MONTH: Int) {
@@ -44,7 +38,6 @@ struct MonthCalendar: View {
         self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
         self.week = infoMonth.getWeek()
         self.startWeek = self.week[0]
-        self.eventController = eventController
         if eventController.checkAccess() {
             self.ekEvents = eventController.getEvents(year: YEAR, month: MONTH)
         } else {
@@ -67,7 +60,6 @@ struct MonthCalendar: View {
             let WIDTH_DATE: CGFloat = width /  CGFloat(NUMWEEK)
             let HEIGHT_DATE: CGFloat = 12
             let HEIGHT_ROW_MONTH: CGFloat = (height - HEIGHT_WEEK) / CGFloat(NUMROWMONTH)
-            let WIDTH_TITLE: CGFloat = WIDTH_DATE - 8
             let HEIGHT_EVENT: CGFloat = 19
             let HEIGHT_EVENT_SPACE = HEIGHT_ROW_MONTH - HEIGHT_DATE
             let ROW_EVENTS: Int = Int((HEIGHT_ROW_MONTH - 10) / HEIGHT_EVENT) - 1
@@ -178,7 +170,6 @@ func createEvent(day: Int) -> EKEvent {
 }
 
 class getInfoMonth {
-    @EnvironmentObject var eventData: EventData
     init(year: Int, month: Int) {
         let calendar = Calendar.current
         let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: 1)
@@ -219,6 +210,6 @@ class getInfoMonth {
 
 struct MonthCalendar_Previews: PreviewProvider {
     static var previews: some View {
-        MonthCalendar(EventControllerClass().getEvents(), YEAR: 2023, MONTH: 11)
+        MonthCalendar(EventControllerClass(eventStore: EKEventStore()).getEvents(), YEAR: 2023, MONTH: 11)
     }
 }

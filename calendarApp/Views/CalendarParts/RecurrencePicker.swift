@@ -24,8 +24,6 @@ struct RecurrencePicker: View {
     }
     
     var body: some View {
-        //RecurrenceSheet(recurrenceRuleObj: recurrenceRuleObj)
-        
         GeometryReader { geometry in
             let width = geometry.size.width
             let paddingTenPer = width / CGFloat(10)
@@ -48,7 +46,6 @@ struct RecurrencePicker: View {
                         .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: width * 0.05))
                     }
                 }
-                .foregroundColor(.black)
                 .sheet(isPresented: $isValid) {
                     if let complete = recurrenceRuleObj.complete,
                        complete {
@@ -70,6 +67,7 @@ struct RecurrencePicker: View {
 struct RecurrenceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var recurrenceRuleObj: RecurrenceRuleObj
+    @EnvironmentObject private var customColor: CustomColor
     let weeks = getInfoMonth(date: Date()).getWeek()
 
     
@@ -83,6 +81,7 @@ struct RecurrenceSheet: View {
                     //ScrollView {
                     Picker("繰り返し", selection: $recurrenceRuleObj.frequency) {
                         Text("しない").tag(Optional<EKRecurrenceFrequency>(nil))
+                            .foregroundStyle(customColor.foreGround)
                     }
                     .onChange(of: recurrenceRuleObj.frequency) { fre in
                         if fre == nil { recurrenceRuleObj.interval = 1 }
@@ -101,6 +100,7 @@ struct RecurrenceSheet: View {
                                 .sorted(by: { $0.value.rawValue < $1.value.rawValue })
                                 .map{ $0.key }, id: \.self) { key in
                                     Text(key).tag(recurrenceRuleObj.pickerItem[key])
+                                        .foregroundStyle(customColor.foreGround)
                                 }
                         }
                         .pickerStyle(.segmented)
@@ -129,7 +129,6 @@ struct RecurrenceSheet: View {
                                 .padding(5)
                         }
                     }
-                    .background(.white)
                     .frame(width: width, height: height * 0.16, alignment: .leading)
                     .padding(EdgeInsets(top: padding, leading: 0, bottom: padding * 2, trailing: 0))
                     .animation(.easeIn, value: recurrenceRuleObj.isValid)
@@ -150,11 +149,11 @@ struct RecurrenceSheet: View {
                                         .font(.system(size: 14))
                                         .underline(color:
                                                     Calendar.current.component(.weekday, from: Date()) == weekDay ?
-                                                   (recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? .white : .black ) : .clear
+                                                   (recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? customColor.backGround : customColor.foreGround ) : .clear
                                         )
-                                        .foregroundStyle(recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? .white : .black)
+                                        .foregroundStyle(recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? customColor.backGround : customColor.foreGround)
                                         .frame(width: 26, height: 26)
-                                        .background(recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? .black : .white)
+                                        .background(recurrenceRuleObj.daysWeekToInt.contains(weekDay) ? customColor.foreGround : customColor.backGround)
                                         .cornerRadius(13)
                                         .frame(width: abs(width - padding) / 7)
                                 }
@@ -168,15 +167,6 @@ struct RecurrenceSheet: View {
                         }
                         .pickerStyle(.segmented)
                         .frame(width: width / 2)
-                        .onChange(of: recurrenceRuleObj.switchMonthWeek) { bool in
-                            /*
-                             recurrenceRuleObj.reset(frequency: nil)
-                             if bool {
-                             recurrenceRuleObj.reset(frequency: .monthly)
-                             } else {
-                             recurrenceRuleObj.reset(frequency: .monthly, element: .week)
-                             }*/
-                        }
                         if recurrenceRuleObj.switchMonthWeek {
                             VStack(spacing: 0) {
                                 ForEach(0..<5, id: \.self) { row in
@@ -195,12 +185,12 @@ struct RecurrenceSheet: View {
                                                         .font(.system(size: 13))
                                                         .underline(color:
                                                                     Calendar.current.component(.day, from: Date()) == day ?
-                                                                   (recurrenceRuleObj.daysMonthToInt.contains(day) ? .white : .black ) : .clear
+                                                                   (recurrenceRuleObj.daysMonthToInt.contains(day) ? customColor.backGround : customColor.foreGround ) : .clear
                                                         )
-                                                        .foregroundStyle(recurrenceRuleObj.daysMonthToInt.contains(day) ? .white : .black)
+                                                        .foregroundStyle(recurrenceRuleObj.daysMonthToInt.contains(day) ? customColor.backGround : customColor.foreGround)
                                                 }
                                                 .frame(width: 26, height: 26)
-                                                .background(recurrenceRuleObj.daysMonthToInt.contains(day) ? .black : .white)
+                                                .background(recurrenceRuleObj.daysMonthToInt.contains(day) ? customColor.foreGround : customColor.backGround)
                                                 .cornerRadius(13)
                                                 .clipped()
                                                 .padding()
@@ -250,11 +240,11 @@ struct RecurrenceSheet: View {
                                             .font(.system(size: 13))
                                             .underline(color:
                                                         Calendar.current.component(.month, from: Date()) == month ?
-                                                       (recurrenceRuleObj.monthsYearToInt.contains(month) ? .white : .black ) : .clear
+                                                       (recurrenceRuleObj.monthsYearToInt.contains(month) ? customColor.backGround : customColor.foreGround ) : .clear
                                             )
-                                            .foregroundStyle(recurrenceRuleObj.monthsYearToInt.contains(month) ? .white : .black)
+                                            .foregroundStyle(recurrenceRuleObj.monthsYearToInt.contains(month) ? customColor.backGround : customColor.foreGround)
                                             .frame(width: 26, height: 26)
-                                            .background(recurrenceRuleObj.monthsYearToInt.contains(month) ? .black : .white)
+                                            .background(recurrenceRuleObj.monthsYearToInt.contains(month) ? customColor.foreGround : customColor.backGround)
                                             .cornerRadius(13)
                                             .frame(width: abs(width - padding) / 7)
                                             .padding(EdgeInsets(top: padding, leading: 0, bottom: padding, trailing: 0))
@@ -268,16 +258,6 @@ struct RecurrenceSheet: View {
                                 .frame(width: 100)
                                 .padding(padding)
                                 .frame(width: width, alignment: .trailing)
-                                .onChange(of: recurrenceRuleObj.isWeekYear) { bool in
-                                    /*
-                                     if bool {
-                                     recurrenceRuleObj.reset(frequency: .monthly, element: .week)
-                                     } else {
-                                     recurrenceRuleObj.selectedDaysWeek = nil
-                                     recurrenceRuleObj.setPositions = nil
-                                     }
-                                     */
-                                }
                             if recurrenceRuleObj.isWeekYear {
                                 HStack(spacing: 0) {
                                     VerticalWheelPicker(initialCenterItem: recurrenceRuleObj.selectedSetPositions, numItem: 3, items: recurrenceRuleObj.numWeekMonth) { num in
@@ -307,11 +287,8 @@ struct RecurrenceSheet: View {
                     default:
                         Spacer()
                     }
-                    
                     Spacer()
-                    //}
                 }
-                //.background(.gray)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar() {
                     ToolbarItem(placement: .topBarLeading) {
@@ -320,7 +297,7 @@ struct RecurrenceSheet: View {
                             dismiss()
                         } label: {
                             Text("キャンセル")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(customColor.cancel)
                         }
                     }
                     ToolbarItem(placement: .principal) {
@@ -332,9 +309,12 @@ struct RecurrenceSheet: View {
                             dismiss()
                         } label: {
                             Text("完了")
+                                .foregroundStyle(customColor.complete)
                         }
                     }
                 }
+                .background(customColor.backGround)
+                .foregroundStyle(customColor.foreGround)
             }
         }
     }
@@ -626,16 +606,5 @@ class RecurrenceRuleObj: ObservableObject {
         self.initReset(recurrenceRules: [newRule], date: date)
         ekEvent.addRecurrenceRule(newRule)
     }
-    /*
-    func allPrint() {
-        print(self.interval)
-        print(self.selectedDaysWeek)
-        print(self.selectedDaysMonth)
-        print(self.selectedDaysYear)
-        print(self.selectedWeeksYear)
-        print(self.selectedMonthsYear)
-        print(self.setPositions)
-    }
-    */
 }
 

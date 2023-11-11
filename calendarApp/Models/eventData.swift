@@ -22,10 +22,14 @@ import EventKitUI
 // isDeleteAfter
 
 class EventData: ObservableObject {
-    @Published var ekEvent: EKEvent = EKEvent(eventStore: EKEventStore())
-    @Published var eventController = EventControllerClass()
+    var eventStore: EKEventStore
+    
+    @Published var ekEvent: EKEvent
+    @Published var eventController: EventControllerClass
     // 日付が過ぎると消去
     @Published var isDeleteAfterEndDate: Bool
+    
+    @Published var isAllDay: Bool = false
     // 最初に表示するカレンダー
     @Published var defaultCalendar: EKCalendar?
     
@@ -41,16 +45,33 @@ class EventData: ObservableObject {
     }
     
     init(isDeleteAfterEndDate: Bool = false) {
+        self.eventStore = EKEventStore()
+        self.ekEvent = EKEvent(eventStore: eventStore)
+        self.eventController = EventControllerClass(eventStore: eventStore)
         self.isDeleteAfterEndDate = isDeleteAfterEndDate
         self.defaultCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
-        self.ekEvent = EKEvent(eventStore: eventController.eventStore)
         self.ekEvent.calendar = self.defaultCalendar
         let calendar = DateObject().calendar
-        let min = Int((Double(calendar.component(.minute, from: Date())) / Double(5)).rounded(.toNearestOrAwayFromZero)) * 5
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
-        components.minute = min >= 60 ? 0 : min
-        // 始まりと終わりの日付を30秒ずらす
-        components.second = 0
+        self.ekEvent.calendar = self.defaultCalendar
+        let startDate = calendar.date(from: components)!
+        self.ekEvent.startDate = startDate
+        
+        components.second = 30
+        let endDate = calendar.date(from: components)!
+        self.ekEvent.endDate = endDate
+    }
+    
+    func initializeObj(isDeleteAfterEndDate: Bool = false) {
+        self.eventStore = EKEventStore()
+        self.ekEvent = EKEvent(eventStore: eventStore)
+        self.eventController = EventControllerClass(eventStore: eventStore)
+        self.isDeleteAfterEndDate = isDeleteAfterEndDate
+        self.defaultCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        self.ekEvent.calendar = self.defaultCalendar
+        let calendar = DateObject().calendar
+        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
+        self.ekEvent.calendar = self.defaultCalendar
         let startDate = calendar.date(from: components)!
         self.ekEvent.startDate = startDate
         
@@ -100,9 +121,8 @@ class EventControllerClass: EventController, ObservableObject {
     var eventStore: EKEventStore
     var calendar: Calendar
     
-    
-    init () {
-        self.eventStore = EKEventStore()
+    init (eventStore: EKEventStore) {
+        self.eventStore = eventStore
         self.calendar = DateObject().calendar
         if !checkAccess() {
             self.eventStore.requestAccess(to: .event, completion: { (granted, error) in
@@ -159,7 +179,6 @@ class EventControllerClass: EventController, ObservableObject {
     }
     
     func getEvents(year: Int?, month: Int?) -> [EKEvent] {
-        print("get")
         let startDate = calendar.date(from: DateComponents(year: year!, month: month!, day: 1, hour: 0, minute: 0, second: 0))!
         let endDate = calendar.date(from: DateComponents(year: year!, month: month! + 1, day: 0, hour: 23, minute: 59, second: 59))!
         let predicate = self.eventStore.predicateForEvents(withStart: startDate, end: endDate, calendars: getCalendars())

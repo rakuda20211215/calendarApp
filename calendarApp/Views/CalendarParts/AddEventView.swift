@@ -10,6 +10,7 @@ import EventKit
 
 struct AddEventView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var customColor: CustomColor
     private var eventData: EventData = EventData()
     
     var body: some View {
@@ -23,21 +24,28 @@ struct AddEventView: View {
                 .toolbar() {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
+                            eventData.initializeObj()
                             dismiss()
                         } label: {
                             Text("キャンセル")
+                                .foregroundStyle(customColor.cancel)
                         }
                     }
                     ToolbarItem(placement: .principal) {
                             Text("新規イベント")
+                            .foregroundStyle(customColor.foreGround)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            print(eventData.ekEvent)
-                            let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
-                            dismiss()
+                            if eventData.ekEvent.title.count > 0 {
+                                eventData.ekEvent.isAllDay = eventData.isAllDay
+                                let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
+                                eventData.initializeObj()
+                                dismiss()
+                            }
                         } label: {
                             Text("追加")
+                                .foregroundStyle(eventData.ekEvent.title.count > 0 ? customColor.complete : customColor.invalid)
                         }
                     }
                 }
@@ -49,5 +57,6 @@ struct AddEventView: View {
 struct AddEventView_Previews: PreviewProvider {
     static var previews: some View {
         AddEventView()
+            .environmentObject(CustomColor(foreGround: .black, backGround: .white))
     }
 }

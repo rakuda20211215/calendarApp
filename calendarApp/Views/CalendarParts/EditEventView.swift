@@ -9,15 +9,17 @@ import SwiftUI
 import EventKitUI
 
 struct EditEventView: View {
-    @EnvironmentObject var eventData: EventData
+    @EnvironmentObject private var eventData: EventData
+    @EnvironmentObject private var customColor: CustomColor
     @State private var isShownTabCalendar: Bool = false
-    @State var tabCalendarX: CGFloat = 0
-    @State var tabCalendarY: CGFloat = 0
+    @State private var tabCalendarX: CGFloat = 0
+    @State private var tabCalendarY: CGFloat = 0
     var startDayDateObj: DateObject = DateObject()
     var endDayDateObj: DateObject = DateObject()
-    @State var location: String = ""
-    @State var url: String = ""
-    @State var memo: String = ""
+    @State private var title: String = ""
+    @State private var location: String = ""
+    @State private var url: String = ""
+    @State private var memo: String = ""
     
     var body: some View {
         let verticalPadding: CGFloat = 10
@@ -30,11 +32,19 @@ struct EditEventView: View {
                 ZStack(alignment: .topLeading) {
                     VStack(spacing: 0) {
                         // タイトル
-                        TextField("タイトル", text: $eventData.ekEvent.title)
+                        TextField("タイトル", text: $title)
                             .multilineTextAlignment(.center)
                             .font(.system(size: 25,weight: .bold))
                             .padding(EdgeInsets(top: verticalPadding, leading: 0, bottom: verticalPadding, trailing: 0))
                             .frame(height: HEIGHT_TITLE)
+                            .onChange(of: title) { _ in
+                                if title.count > 0 {
+                                    eventData.ekEvent.title = title
+                                } else {
+                                    eventData.ekEvent.title = nil
+                                }
+                            }
+                        
                         HorizontalLine()
                             .frame(height: 1)
                         Text("")
@@ -43,11 +53,18 @@ struct EditEventView: View {
                             .frame(height: 1)
                         // 日付選択
                         HStack {
-                            Toggle("終日", isOn: $eventData.ekEvent.isAllDay)
+                            Toggle("終日", isOn: $eventData.isAllDay)
                                 .frame(width: 100, alignment: .trailing)
                                 .padding(15)
                         }
                         .frame(width: width, alignment: .trailing)
+                        .onChange(of: eventData.isAllDay) { isAllDay in
+                            if eventData.visibleSwitch == .startTime
+                                || eventData.visibleSwitch == .endTime {
+                                eventData.visibleSwitch = .invisible
+                            }
+                        }
+                        
                         DateTimeSelect(startOrEnd: 0, date: $eventData.ekEvent.startDate, width: width)
                             .environmentObject(startDayDateObj)
                         DateTimeSelect(startOrEnd: 1, date: $eventData.ekEvent.endDate, width: width)
@@ -68,7 +85,6 @@ struct EditEventView: View {
                         // Alarm
                         AlarmPicker()
                             .padding(EdgeInsets(top: verticalPadding, leading: 40, bottom: verticalPadding, trailing: 40))
-                        
                         
                         HorizontalLine()
                             .frame(height: 1)
@@ -130,10 +146,13 @@ struct EditEventView: View {
             }
             
         }
+        .background(customColor.backGround)
+        .foregroundStyle(customColor.foreGround)
     }
 }
 
 struct TabCalendar: View {
+    @EnvironmentObject private var customColor: CustomColor
     @EnvironmentObject var eventData: EventData
     var calendarsBySource: [EKSourceType: [EKCalendar]] {
         calendarBySource(calendars: calendars)
@@ -163,12 +182,11 @@ struct TabCalendar: View {
                     .padding(EdgeInsets(top: 0, leading: 40, bottom: 0, trailing: 0))
                 
                 Button {
-                    withAnimation(.easeOut){
+                    withAnimation(){
                         isShown.toggle()
                     }
                 } label: {
                     Text(currentCalendar!.title)
-                        .foregroundColor(.black)
                         .font(.system(size: 13))
                         .frame(width: abs(width), height: HEIGHT_TITLE)
                         .padding(EdgeInsets(top: 0, leading: -40 - HEIGHT_CIRCLE, bottom: 0, trailing: 0))
@@ -184,7 +202,7 @@ struct TabCalendar: View {
                                 Button {
                                     eventData.ekEvent.calendar = calendar
                                     currentCalendar = calendar
-                                    withAnimation(.easeOut){
+                                    withAnimation(){
                                         isShown.toggle()
                                     }
                                 } label: {
@@ -197,13 +215,13 @@ struct TabCalendar: View {
                 }
                 .padding(10)
                 .frame(width: width, alignment: .leading)
-                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
                 .overlay(RoundedRectangle(cornerRadius: 10)
                     .stroke(.black, lineWidth: 0.5))
                 .cornerRadius(10)
                 .padding(EdgeInsets(top: -3, leading: 0, bottom: 0, trailing: -10))
             }
         }
+        .background(customColor.backGround)
     }
     
     func calendarBySource(calendars: [EKCalendar]) -> [EKSourceType : [EKCalendar]] {
@@ -236,7 +254,6 @@ struct CalendarSeal: View {
                 .foregroundColor(Color(calendar.cgColor))
                 .padding(padding)
             Text(calendar.title)
-                .foregroundColor(.black)
                 .font(.system(size: 10))
                 .padding(padding)
         }
@@ -248,6 +265,7 @@ struct CalendarSeal: View {
 struct DateTimeSelect: View {
     @EnvironmentObject var eventData: EventData
     @EnvironmentObject var dayDateObj: DateObject
+    @EnvironmentObject private var customColor: CustomColor
     @Binding var date: Date
     @State var hour: Int?
     @State var minute: Int?
@@ -297,40 +315,38 @@ struct DateTimeSelect: View {
                 }
             } label: {
                 Text(dateFormatterDate.string(from: date))
-                //.font(.system(size: CGFloat(((width / 2) + 15) * 0.8) / 11))
                     .fontWeight(.bold)
-                    .foregroundColor(.black)
-                //.frame(width: ((width / 2) + 15) * 0.8)
                 
             }
             .padding(10)
             .overlay(RoundedRectangle(cornerRadius: radius)
-                .stroke( eventData.visibleSwitch == visibleDate ? .black : .white, lineWidth: linewidth))
+                .stroke( eventData.visibleSwitch == visibleDate ? customColor.foreGround : .clear , lineWidth: linewidth))
             .cornerRadius(radius)
             .frame(width: (width / 2) + 15)
             
             // 時間
             Button {
-                withAnimation(.easeOut) {
-                    if eventData.visibleSwitch == visibleTime {
-                        eventData.visibleSwitch = .invisible
-                    } else {
-                        eventData.visibleSwitch = visibleTime
+                if !eventData.isAllDay {
+                    withAnimation(.easeOut) {
+                        if eventData.visibleSwitch == visibleTime {
+                            eventData.visibleSwitch = .invisible
+                        } else {
+                            eventData.visibleSwitch = visibleTime
+                        }
                     }
                 }
             } label: {
-                Text(dateFormatterTime.string(from: date))
+                Text(!eventData.isAllDay ? dateFormatterTime.string(from: date) : "")
                     .fontWeight(.bold)
-                    .foregroundColor(.black)
                     .frame(width: abs((width / 2) - 15) * 0.3)
             }
             .padding(10)
             .overlay(RoundedRectangle(cornerRadius: radius)
-                .stroke( eventData.visibleSwitch == visibleTime ? .black : .white, lineWidth: linewidth))
+                .stroke( eventData.visibleSwitch == visibleTime ? customColor.foreGround : .clear , lineWidth: linewidth))
             .cornerRadius(radius)
             .frame(width: abs((width / 2) - 15))
+            
         }
-        .background(.white)
         
         if eventData.visibleSwitch == visibleDate {
             if #available(iOS 17.0, *) {
@@ -343,39 +359,41 @@ struct DateTimeSelect: View {
                 DatePicker("日付選択", selection: $date)
             }
         } else if eventData.visibleSwitch == visibleTime {
-            if #available(iOS 17.0, *) {
-                selectHour(date: $date)
-                selectMinute(date: $date)
-            } else {
-                HStack {
-                    Picker("時間選択", selection: $hour) {
-                        ForEach(1...24, id: \.self) { h in
-                            Text("\(h)")
+            if !eventData.isAllDay {
+                if #available(iOS 17.0, *) {
+                    selectHour(date: $date)
+                    selectMinute(date: $date)
+                } else {
+                    HStack {
+                        Picker("時間選択", selection: $hour) {
+                            ForEach(1...24, id: \.self) { h in
+                                Text("\(h)")
+                            }
+                        }
+                        .onChange(of: hour) { _ in
+                            let calendar = dayDateObj.calendar
+                            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
+                            components.hour = hour
+                            date = calendar.date(from: components)!
+                            EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
+                        }
+                        Picker("時間選択", selection: $minute) {
+                            ForEach(1...60, id: \.self) { h in
+                                Text("\(h)")
+                            }
+                        }
+                        .onChange(of: minute) { _ in
+                            let calendar = dayDateObj.calendar
+                            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
+                            components.minute = minute
+                            date = calendar.date(from: components)!
+                            EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
                         }
                     }
-                    .onChange(of: hour) { _ in
-                        let calendar = dayDateObj.calendar
-                        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
-                        components.hour = hour
-                        date = calendar.date(from: components)!
-                        EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
+                    .onAppear() {
+                        self.hour = dayDateObj.getHour(date)
+                        self.minute = dayDateObj.getMinute(date)
                     }
-                    Picker("時間選択", selection: $minute) {
-                        ForEach(1...60, id: \.self) { h in
-                            Text("\(h)")
-                        }
-                    }
-                    .onChange(of: minute) { _ in
-                        let calendar = dayDateObj.calendar
-                        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
-                        components.minute = minute
-                        date = calendar.date(from: components)!
-                        EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
-                    }
-                }
-                .onAppear() {
-                    self.hour = dayDateObj.getHour(date)
-                    self.minute = dayDateObj.getMinute(date)
                 }
             }
         }
@@ -389,7 +407,7 @@ struct selectYear: View {
     
     var body: some View {
         let initialPosition = dayDateObj.calendar.component(.year, from: date)
-        HorizontalWheelPicker_cigma(initialCenterItem: initialPosition, selection: $dayDateObj.yearView, numItem: 5, items: Array(1500...3000)) { index in
+        HorizontalWheelPicker(initialCenterItem: initialPosition, selection: $dayDateObj.yearView, numItem: 5, items: Array(1500...3000)) { index in
             Text(index.description)
         } onChangeEvent: { item in
             let calendar = dayDateObj.calendar
@@ -413,7 +431,7 @@ struct selectMonth: View {
         self._index = State(initialValue: Calendar.current.component(.month, from: date.wrappedValue))
     }
     var body: some View {
-        HorizontalWheelPicker_cigma(initialCenterItem: dayDateObj.calendar.component(.month, from: date), selection: $dayDateObj.monthView, numItem: 5, items: Array(1...12)) { index in
+        HorizontalWheelPicker(initialCenterItem: dayDateObj.calendar.component(.month, from: date), selection: $dayDateObj.monthView, numItem: 5, items: Array(1...12)) { index in
             Text(index.description)
         } onChangeEvent: { item in
             let calendar = dayDateObj.calendar
@@ -426,12 +444,12 @@ struct selectMonth: View {
         .frame(height: 40)
     }
 }
-/*
-struct selectDate_beta: View {
+
+struct selectDate: View {
     @EnvironmentObject var eventData: EventData
     @EnvironmentObject var dateObj: DateObject
+    @EnvironmentObject private var customColor: CustomColor
     @Binding var date: Date
-    // let viewDate: Date
     let diffMonth: Int
     let width: CGFloat
     
@@ -465,7 +483,6 @@ struct selectDate_beta: View {
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { columnIndex in
                         VStack(spacing: 0) {
-                            let calendar = dateObj.calendar
                             let year = calendar.component(.year, from: viewDate)
                             let month = calendar.component(.month, from: viewDate)
                             let day = infoMonth.getDate(rowIndex, columnIndex, infoMonth.noWeekFirstDate)
@@ -499,95 +516,7 @@ struct selectDate_beta: View {
                 }
             }
         }
-    }
-    
-    func compareDate(_ date: Date, currentDate: Date = Date()) -> Bool {
-        let calendar = dateObj.calendar
-        guard calendar.component(.year, from: date) == calendar.component(.year, from: currentDate) else {
-            return false
-        }
-        guard calendar.component(.month, from: date) == calendar.component(.month, from: currentDate) else {
-            return false
-        }
-        guard calendar.component(.day, from: date) == calendar.component(.day, from: currentDate) else {
-            return false
-        }
-        return true
-    }
-}
-*/
-struct selectDate_beta: View {
-    @EnvironmentObject var eventData: EventData
-    @EnvironmentObject var dateObj: DateObject
-    @Binding var date: Date
-    // let viewDate: Date
-    let diffMonth: Int
-    let width: CGFloat
-    
-    init(date: Binding<Date>, diffMonth: Int, width: CGFloat) {
-        self._date = date
-        self.diffMonth = diffMonth
-        self.width = width
-    }
-    
-    var body: some View {
-        let calendar = dateObj.calendar
-        let viewDate = calendar.date(from: DateComponents(
-            year: dateObj.getYear(dateObj.viewDate),
-            month: dateObj.getMonth(dateObj.viewDate) + diffMonth,
-            day: dateObj.getDay(dateObj.viewDate)))!
-        let itemWidth = width / 7
-        let rowMonth = 6
-        let infoMonth = getInfoMonth(date: viewDate)
-        
-        VStack {
-            // 週
-            HStack(spacing: 0) {
-                ForEach(0..<7, id: \.self) { index in
-                    Text(infoMonth.getWeek()[index])
-                        .frame(width: itemWidth, height: 10)
-                        .font(.system(size: 10))
-                }
-            }
-            
-            ForEach(0..<rowMonth, id: \.self) { rowIndex in
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { columnIndex in
-                        VStack(spacing: 0) {
-                            let calendar = dateObj.calendar
-                            let year = calendar.component(.year, from: viewDate)
-                            let month = calendar.component(.month, from: viewDate)
-                            let day = infoMonth.getDate(rowIndex, columnIndex, infoMonth.noWeekFirstDate)
-                            let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: day)
-                            let itemDate = calendar.date(from: dateComp)!
-                            
-                            if infoMonth.rangeMonth ~= day {
-                                Button {
-                                    let calendar = dateObj.calendar
-                                    var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
-                                    components.day = day
-                                    date = calendar.date(from: components)!
-                                    EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
-                                } label: {
-                                    //日付
-                                    Text(day.description)
-                                        .foregroundColor(compareDate(itemDate, currentDate: date) ? .white : .black)
-                                        .frame(width: 30, height: 30, alignment: .center)
-                                        .underline(color: compareDate(itemDate) ? (compareDate(itemDate, currentDate: date)  ? .white : .black) : .clear)
-                                        .font(.system(size: 13))
-                                        .background(compareDate(itemDate, currentDate: date) ? .black : .clear)
-                                        .cornerRadius(15)
-                                        .frame(width: itemWidth)
-                                }
-                            } else {
-                                Text("")
-                                    .frame(width: itemWidth, height: 30)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        .background(customColor.backGround)
     }
     
     func compareDate(_ date: Date, currentDate: Date = Date()) -> Bool {
@@ -609,34 +538,41 @@ struct selectDateTab: View {
     @EnvironmentObject var eventData: EventData
     @EnvironmentObject var dateObj: DateObject
     @Binding var date: Date
+    @State private var selection: Int = 0
     let width: CGFloat
     //let calendar: Calendar = Calendar.current
     var body: some View {
         if #available(iOS 17.0, *) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                ScrollViewReader { proxy in
-                    LazyHStack(spacing: 0) {
-                        ForEach(dateObj.rangeMonth, id: \.self) { addMonth in
-                            selectDate_beta(date: $date, diffMonth: addMonth, width: width)
-                                .frame(width: width)
+            VStack(spacing: 0) {
+                TabView(selection: $selection) {
+                    selectDate(date: $date, diffMonth: -1, width: width).tag(-1)
+                        .frame(width: width)
+                    
+                    selectDate(date: $date, diffMonth: 0, width: width).tag(0)
+                            .frame(width: width)
+                        .onDisappear() {
+                            if selection != 0 {
+                                dateObj.updateDateObj(selection: selection)
+                                
+                                let calendar = dateObj.calendar
+                                var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
+                                components.year = dateObj.yearView
+                                components.month = dateObj.monthView
+                                date = calendar.date(from: components)!
+                                dateObj.viewDate = date
+                                EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
+                                
+                                selection = 0
+                            }
                         }
-                    }
-                    .scrollTargetLayout()
+                        .tag(0)
+                    
+                    selectDate(date: $date, diffMonth: 1, width: width).tag(1)
+                            .frame(width: width)
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $dateObj.selection)
-            .onChange(of: dateObj.selection) { _ in
-                dateObj.updateDateObj()
-                
-                let calendar = dateObj.calendar
-                var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
-                components.year = dateObj.yearView
-                components.month = dateObj.monthView
-                date = calendar.date(from: components)!
-                EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
-                
-            }
+            .frame(height: 270)
         }
     }
 }
@@ -650,7 +586,7 @@ struct selectHour: View {
         self._index = State(initialValue: Calendar.current.component(.month, from: date.wrappedValue))
     }
     var body: some View {
-        HorizontalWheelPicker_cigma(initialCenterItem: Calendar.current.component(.hour, from: date), numItem: 7, items: Array(0...23)) { index in
+        HorizontalWheelPicker(initialCenterItem: Calendar.current.component(.hour, from: date), numItem: 7, items: Array(0...23)) { index in
             Text(index.description)
         } onChangeEvent: { item in
             let calendar = Calendar.current
@@ -674,7 +610,7 @@ struct selectMinute: View {
         self._index = State(initialValue: min)
     }
     var body: some View {
-        HorizontalWheelPicker_cigma(initialCenterItem: index, numItem: 9, items: createMinuteArray(diff: diff)) { index in
+        HorizontalWheelPicker(initialCenterItem: index, numItem: 9, items: createMinuteArray(diff: diff)) { index in
             Text(index.description)
                 .font(.system(size: 15))
         } onChangeEvent: { item in
@@ -709,162 +645,7 @@ struct HorizontalItemPrefurenceKey: PreferenceKey {
 }
 
 struct HorizontalWheelPicker<Content: View, Item: Comparable>: View {
-    var position: Int
-    var items: Binding<[Item]>
-    let contentBuilder: (Item) -> Content
-    @State private var scrollID: Int?
-    let onChangeEvent: (Item) -> Void
-    let numItem: Int
-    
-    init (initialCenterItem item: Item, numItem: Int = 5, items: Binding<[Item]>, content: @escaping (Item) -> Content, onChangeEvent: @escaping (Item) -> Void) {
-        self.position = items.wrappedValue.firstIndex(of: item)!
-        self.numItem = numItem
-        self.items = items
-        self.contentBuilder = content
-        self.onChangeEvent = onChangeEvent
-    }
-    
-    init (initialCenterItem item: Item, numItem: Int = 5, items: [Item], content: @escaping (Item) -> Content, onChangeEvent: @escaping (Item) -> Void) {
-        self.position = items.firstIndex(of: item)!
-        self.numItem = numItem
-        self.items = .constant(items)
-        self.contentBuilder = content
-        self.onChangeEvent = onChangeEvent
-    }
-    
-    var body: some View {
-        if #available(iOS 17.0, *) {
-            VStack {
-                GeometryReader { geometry in
-                    let width = geometry.size.width
-                    // let height = geometry.size.height
-                    let itemWidth = width / CGFloat(numItem)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        ScrollViewReader { proxy in
-                            LazyHStack(spacing: 0) {
-                                ForEach(-numItem / 2..<items.wrappedValue.count + (numItem / 2), id: \.self) { index in
-                                    if 0..<items.wrappedValue.count ~= index {
-                                        contentBuilder(items.wrappedValue[index])
-                                            .foregroundColor( (scrollID ?? position - numItem / 2) + numItem / 2  == index ? .black : .gray)
-                                            .fontWeight((scrollID ?? position - numItem / 2) + numItem / 2  == index ? .bold : .regular)
-                                            .id(index)
-                                            .frame(width: itemWidth)
-                                    } else {
-                                        Text("")
-                                            .frame(width: itemWidth)
-                                    }
-                                }
-                            }
-                            .scrollTargetLayout()
-                            .onAppear {
-                                proxy.scrollTo(position + (numItem / 2))
-                            }
-                        }
-                    }
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollPosition(id: $scrollID)
-                    .onChange(of: scrollID) {
-                        if 0..<items.wrappedValue.count ~= scrollID! + (numItem / 2) {
-                            onChangeEvent(items.wrappedValue[scrollID! + numItem / 2])
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct HorizontalWheelPicker_beta<Content: View, Item: Comparable>: View {
-    var position: Int
-    @Binding var positioningItem: Item
-    var items: Binding<[Item]>
-    let contentBuilder: (Item) -> Content
-    @State private var scrollID: Int?
-    @State private var oldScrollID: Int?
-    let onChangeEvent: (Item) -> Void
-    let numItem: Int
-    
-    init (initialCenterItem item: Item,
-          selection: Binding<Item> = Binding.constant(0),
-          numItem: Int = 5, items: Binding<[Item]>,
-          content: @escaping (Item) -> Content,
-          onChangeEvent: @escaping (Item) -> Void) {
-        self.position = items.wrappedValue.firstIndex(of: item)!
-        self._positioningItem = selection
-        self.numItem = numItem
-        self.items = items
-        self.contentBuilder = content
-        self.onChangeEvent = onChangeEvent
-    }
-    
-    init (initialCenterItem item: Item,
-          selection: Binding<Item> = Binding.constant(0),
-          numItem: Int = 5, items: [Item],
-          content: @escaping (Item) -> Content,
-          onChangeEvent: @escaping (Item) -> Void) {
-        self.position = items.firstIndex(of: item)!
-        self._positioningItem = selection
-        self.numItem = numItem
-        self.items = .constant(items)
-        self.contentBuilder = content
-        self.onChangeEvent = onChangeEvent
-    }
-    
-    var body: some View {
-        if #available(iOS 17.0, *) {
-            VStack {
-                GeometryReader { geometry in
-                    let width = geometry.size.width
-                    // let height = geometry.size.height
-                    let itemWidth = floor(width / CGFloat(numItem))
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        ScrollViewReader { proxy in
-                            LazyHStack(spacing: 0) {
-                                ForEach(-numItem / 2..<items.wrappedValue.count + (numItem / 2), id: \.self) { index in
-                                    if 0..<items.wrappedValue.count ~= index {
-                                        contentBuilder(items.wrappedValue[index])
-                                            .foregroundColor( (scrollID ?? position - numItem / 2) + numItem / 2  == index ? .black : .gray)
-                                            .fontWeight((scrollID ?? position - numItem / 2) + numItem / 2  == index ? .bold : .regular)
-                                            .id(index)
-                                            .frame(width: itemWidth)
-                                    } else {
-                                        Text("")
-                                            .frame(width: itemWidth)
-                                            .id(index)
-                                    }
-                                }
-                            }
-                            .scrollTargetLayout()
-                            .onAppear {
-                                proxy.scrollTo(position, anchor: .center)
-                            }
-                            .onChange(of: positioningItem) { index in
-                                if  scrollID == oldScrollID {
-                                    withAnimation {
-                                        let id = items.wrappedValue.firstIndex(of: positioningItem)!
-                                        print("scroll to : \(id)")
-                                        proxy.scrollTo(id, anchor: .center)
-                                    }
-                                }
-                                
-                                oldScrollID = scrollID
-                            }
-                        }
-                    }
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollPosition(id: $scrollID)
-                    .onChange(of: scrollID) { _ in
-                        if 0..<items.wrappedValue.count ~= scrollID! + (numItem / 2) {
-                            onChangeEvent(items.wrappedValue[scrollID! + numItem / 2])
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
+    @EnvironmentObject private var customColor: CustomColor
     var position: Int
     @Binding var positioningItem: Item
     var items: Binding<[Item]>
@@ -893,7 +674,7 @@ struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
           numItem: Int = 5, items: [Item],
           content: @escaping (Item) -> Content,
           onChangeEvent: @escaping (Item) -> Void) {
-        self.position = items.firstIndex(of: item)!
+        self.position = items.firstIndex(of: item) ?? 0
         self._positioningItem = selection ?? Binding.constant(item)
         self.numItem = numItem
         self.items = .constant(items)
@@ -923,7 +704,7 @@ struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
                                 ForEach(0..<items.wrappedValue.count, id: \.self) { index in
                                     if 0..<items.wrappedValue.count ~= index {
                                         contentBuilder(items.wrappedValue[index])
-                                            .foregroundColor(centerItem  == index ? .black : .gray)
+                                            .foregroundColor(centerItem  == index ? customColor.foreGround : customColor.foreGround.opacity(0.5))
                                             .fontWeight(centerItem  == index ? .bold : .regular)
                                             .id(index)
                                             .frame(width: itemWidth)
@@ -971,6 +752,7 @@ struct HorizontalWheelPicker_cigma<Content: View, Item: Comparable>: View {
 }
 
 struct VerticalWheelPicker<Content: View, Item: Comparable>: View {
+    @EnvironmentObject private var customColor: CustomColor
     var position: Int
     @Binding var positioningItem: Item
     var items: Binding<[Item]>
@@ -1029,7 +811,7 @@ struct VerticalWheelPicker<Content: View, Item: Comparable>: View {
                                 ForEach(0..<items.wrappedValue.count, id: \.self) { index in
                                     if 0..<items.wrappedValue.count ~= index {
                                         contentBuilder(items.wrappedValue[index])
-                                            .foregroundColor(centerItem  == index ? .black : .gray)
+                                            .foregroundColor(centerItem  == index ? customColor.foreGround : customColor.foreGround.opacity(0.5))
                                             .fontWeight(centerItem  == index ? .bold : .regular)
                                             .frame(height: itemHeight)
                                             .id(index)
@@ -1089,11 +871,9 @@ struct AlarmPicker: View {
         } label: {
             HStack(spacing: 0) {
                 Text("通知")
-                    .foregroundStyle(.black)
                 Spacer()
                 Text(alarms.first(where: {$0.value == selectedAlarm})?.key ?? "なし")
                     .fontWeight(.bold)
-                    .foregroundStyle(.black)
                 
             }
         }
@@ -1143,5 +923,6 @@ struct EditEventView_Previews: PreviewProvider {
     static var previews: some View {
         EditEventView()
             .environmentObject(EventData())
+            .environmentObject(CustomColor(foreGround: .black, backGround: .white))
     }
 }

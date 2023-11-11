@@ -58,7 +58,6 @@ struct EventSeal: View {
     
     func getPaddingTopLeading(ekEvent: EKEvent, countEvents: [[Int]]) -> (top: CGFloat, leading: CGFloat) {
         let startDay = Calendar.current.component(.day, from: ekEvent.startDate)
-        let endDay = Calendar.current.component(.day, from: ekEvent.endDate)
         let rowIndex = Int((startDay + CARRYOVER - 1) / weekCount)
         let columnIndex = Int((startDay + CARRYOVER - 1) % weekCount)
         let topPadding = CGFloat(rowIndex) * (HEIGHT_DATE + HEIGHT_EVENT_SPACE) + CGFloat(rowIndex) + HEIGHT_DATE
