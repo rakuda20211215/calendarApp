@@ -13,14 +13,16 @@ struct AddEventView: View {
     @EnvironmentObject private var customColor: CustomColor
     private var eventData: EventData = EventData()
     
+    @State private var isActiveAdd: Bool = false
+    
     var body: some View {
         // ここから
         // NavigationStackとtoolvar ついか
         
         NavigationStack {
-            EditEventView()
+            EditEventView(isActiveAdd: $isActiveAdd)
                 .environmentObject(eventData)
-                //.navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar() {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
@@ -37,15 +39,16 @@ struct AddEventView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            if eventData.ekEvent.title.count > 0 {
+                            if isActiveAdd {
                                 eventData.ekEvent.isAllDay = eventData.isAllDay
+                                eventData.ekEvent.calendar = eventData.currentCalendar
                                 let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
                                 eventData.initializeObj()
                                 dismiss()
                             }
                         } label: {
                             Text("追加")
-                                .foregroundStyle(eventData.ekEvent.title.count > 0 ? customColor.complete : customColor.invalid)
+                                .foregroundStyle(isActiveAdd ? customColor.complete : customColor.invalid)
                         }
                     }
                 }

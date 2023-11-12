@@ -14,7 +14,6 @@ struct RecurrencePicker: View {
     @StateObject private var recurrenceRuleObj: RecurrenceRuleObj
     
     let date: Date
-    let fontSize: CGFloat = 12
     
     init(ekEvent: Binding<EKEvent>) {
         self._ekEvent = ekEvent
@@ -38,12 +37,12 @@ struct RecurrencePicker: View {
                         Spacer()
                         VStack(alignment: .trailing) {
                             Text("\(recurrenceRuleObj.eventStr)")
-                                .font(.system(size: fontSize,weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                                 .frame(minWidth: width / 4)
                                 .multilineTextAlignment(.leading)
                         }
                         .frame(width: width / 2, alignment: .trailing)
-                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: width * 0.05))
+                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     }
                 }
                 .sheet(isPresented: $isValid) {

@@ -9,8 +9,8 @@ import SwiftUI
 import EventKitUI
 
 struct EditEventView: View {
-    @EnvironmentObject private var eventData: EventData
     @EnvironmentObject private var customColor: CustomColor
+    @EnvironmentObject private var eventData: EventData
     @State private var isShownTabCalendar: Bool = false
     @State private var tabCalendarX: CGFloat = 0
     @State private var tabCalendarY: CGFloat = 0
@@ -20,6 +20,11 @@ struct EditEventView: View {
     @State private var location: String = ""
     @State private var url: String = ""
     @State private var memo: String = ""
+    @Binding var isActiveAdd: Bool
+
+    init(isActiveAdd: Binding<Bool>) {
+        self._isActiveAdd = isActiveAdd
+    }
     
     var body: some View {
         let verticalPadding: CGFloat = 10
@@ -40,9 +45,12 @@ struct EditEventView: View {
                             .onChange(of: title) { _ in
                                 if title.count > 0 {
                                     eventData.ekEvent.title = title
+                                    isActiveAdd = true
                                 } else {
                                     eventData.ekEvent.title = nil
+                                    isActiveAdd = false
                                 }
+                                print(eventData.ekEvent.title.count)
                             }
                         
                         HorizontalLine()
@@ -65,9 +73,9 @@ struct EditEventView: View {
                             }
                         }
                         
-                        DateTimeSelect(startOrEnd: 0, date: $eventData.ekEvent.startDate, width: width)
+                        DateTimeSelect(startOrEnd: 0, date: $eventData.ekEvent.startDate, width: width, isShownTabCalendar: $isShownTabCalendar)
                             .environmentObject(startDayDateObj)
-                        DateTimeSelect(startOrEnd: 1, date: $eventData.ekEvent.endDate, width: width)
+                        DateTimeSelect(startOrEnd: 1, date: $eventData.ekEvent.endDate, width: width, isShownTabCalendar: $isShownTabCalendar)
                             .environmentObject(endDayDateObj)
                         
                         HorizontalLine()
@@ -127,8 +135,8 @@ struct EditEventView: View {
                     }
                     
                     // カレンダー
-                    if eventData.defaultCalendar != nil {
-                        TabCalendar(calendars: eventData.eventController.getCalendars(), currentCalendar: $eventData.defaultCalendar, width: width, HEIGHT_TITLE: HEIGHT_CALENDAR,  $isShownTabCalendar)
+                    if eventData.currentCalendar != nil {
+                        TabCalendar(width: width, HEIGHT_TITLE: HEIGHT_CALENDAR,  $isShownTabCalendar)
                             .padding(EdgeInsets(top: Y_CALENDAR, leading: 0, bottom: 0, trailing: 0))
                     } else {
                         Text("カレンダーはありません")
@@ -138,13 +146,9 @@ struct EditEventView: View {
                 }
                 .font(.system(size: 14))
             }
-            .onTapGesture(count: 1) {
-                if(isShownTabCalendar){
-                    isShownTabCalendar.toggle()
-                }
-                
+            .onTapGesture {
+                    isShownTabCalendar = false
             }
-            
         }
         .background(customColor.backGround)
         .foregroundStyle(customColor.foreGround)
@@ -157,16 +161,18 @@ struct TabCalendar: View {
     var calendarsBySource: [EKSourceType: [EKCalendar]] {
         calendarBySource(calendars: calendars)
     }
-    let calendars: [EKCalendar]
-    @Binding var currentCalendar: EKCalendar?
+    var calendars: [EKCalendar] {
+        eventData.eventController.getCalendars()
+    }
+    var currentCalendar: EKCalendar {
+        eventData.currentCalendar!
+    }
     let width: CGFloat
     let HEIGHT_TITLE: CGFloat
     let HEIGHT_CIRCLE: CGFloat = 13
     @Binding var isShown: Bool
     
-    init(calendars: [EKCalendar], currentCalendar: Binding<EKCalendar?>, width: CGFloat, HEIGHT_TITLE: CGFloat, _ isShown: Binding<Bool>) {
-        self.calendars = calendars
-        self._currentCalendar = currentCalendar
+    init(width: CGFloat, HEIGHT_TITLE: CGFloat, _ isShown: Binding<Bool>) {
         self.width = width - 20
         self.HEIGHT_TITLE = HEIGHT_TITLE
         self._isShown = isShown
@@ -178,7 +184,7 @@ struct TabCalendar: View {
             HStack {
                 Circle()
                     .frame(height: HEIGHT_CIRCLE)
-                    .foregroundColor(Color(currentCalendar!.cgColor))
+                    .foregroundColor(Color(currentCalendar.cgColor))
                     .padding(EdgeInsets(top: 0, leading: 40, bottom: 0, trailing: 0))
                 
                 Button {
@@ -186,7 +192,7 @@ struct TabCalendar: View {
                         isShown.toggle()
                     }
                 } label: {
-                    Text(currentCalendar!.title)
+                    Text(currentCalendar.title)
                         .font(.system(size: 13))
                         .frame(width: abs(width), height: HEIGHT_TITLE)
                         .padding(EdgeInsets(top: 0, leading: -40 - HEIGHT_CIRCLE, bottom: 0, trailing: 0))
@@ -200,8 +206,8 @@ struct TabCalendar: View {
                         HStack(spacing: 2) {
                             ForEach(calendarsBySource[key]!, id: \.self) { calendar in
                                 Button {
-                                    eventData.ekEvent.calendar = calendar
-                                    currentCalendar = calendar
+                                    //eventData.ekEvent.calendar = calendar
+                                    eventData.currentCalendar = calendar
                                     withAnimation(){
                                         isShown.toggle()
                                     }
@@ -227,12 +233,14 @@ struct TabCalendar: View {
     func calendarBySource(calendars: [EKCalendar]) -> [EKSourceType : [EKCalendar]] {
         var calendarArray: [EKSourceType : [EKCalendar]] = [:]
         for calendar in calendars {
-            let calendarType = calendar.source.sourceType
-            
-            if calendarArray.index(forKey: calendarType) == nil {
-                calendarArray.updateValue([calendar], forKey: calendarType)
-            } else {
-                calendarArray[calendarType]!.append(calendar)
+            if calendar.allowsContentModifications {
+                let calendarType = calendar.source.sourceType
+                
+                if calendarArray.index(forKey: calendarType) == nil {
+                    calendarArray.updateValue([calendar], forKey: calendarType)
+                } else {
+                    calendarArray[calendarType]!.append(calendar)
+                }
             }
         }
         
@@ -267,6 +275,7 @@ struct DateTimeSelect: View {
     @EnvironmentObject var dayDateObj: DateObject
     @EnvironmentObject private var customColor: CustomColor
     @Binding var date: Date
+    @Binding private var isShownTabCalendar: Bool
     @State var hour: Int?
     @State var minute: Int?
     let visibleDate: visibleDateTime
@@ -277,7 +286,7 @@ struct DateTimeSelect: View {
     let radius: CGFloat = 5
     let linewidth: CGFloat = 2
     
-    init (startOrEnd: Int, date: Binding<Date>, width: CGFloat) {
+    init (startOrEnd: Int, date: Binding<Date>, width: CGFloat, isShownTabCalendar: Binding<Bool>) {
         if startOrEnd == 0 {
             visibleDate = .startDate
             visibleTime = .startTime
@@ -299,6 +308,8 @@ struct DateTimeSelect: View {
         dateFormatterTime.timeZone = TimeZone(identifier:  "Asia/Tokyo")
         dateFormatterTime.dateFormat = "H:mm"
         self.width = width
+        
+        self._isShownTabCalendar = isShownTabCalendar
     }
     
     var body: some View {
@@ -313,6 +324,8 @@ struct DateTimeSelect: View {
                         eventData.visibleSwitch = visibleDate
                     }
                 }
+                
+                isShownTabCalendar = false
             } label: {
                 Text(dateFormatterDate.string(from: date))
                     .fontWeight(.bold)
@@ -334,6 +347,8 @@ struct DateTimeSelect: View {
                             eventData.visibleSwitch = visibleTime
                         }
                     }
+                    
+                    isShownTabCalendar = false
                 }
             } label: {
                 Text(!eventData.isAllDay ? dateFormatterTime.string(from: date) : "")
@@ -873,8 +888,7 @@ struct AlarmPicker: View {
                 Text("通知")
                 Spacer()
                 Text(alarms.first(where: {$0.value == selectedAlarm})?.key ?? "なし")
-                    .fontWeight(.bold)
-                
+                    .font(.system(size: 12, weight: .bold))
             }
         }
         .onChange(of: selectedAlarm) { _ in
@@ -921,7 +935,7 @@ struct HorizontalLine: View {
 
 struct EditEventView_Previews: PreviewProvider {
     static var previews: some View {
-        EditEventView()
+        EditEventView(isActiveAdd: Binding.constant(false))
             .environmentObject(EventData())
             .environmentObject(CustomColor(foreGround: .black, backGround: .white))
     }

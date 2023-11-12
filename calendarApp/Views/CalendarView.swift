@@ -12,29 +12,26 @@ import EventKit
 
 struct CalendarView: View {
     @EnvironmentObject private var customColor: CustomColor
-    let realm = try! Realm()
-    @ObservedObject private var shoptable: modelData
+    private var eventData: EventData = EventData()
+    //let realm = try! Realm()
+    //@ObservedObject private var shoptable: modelData
     @ObservedObject private var dateObj: DateObject = DateObject()
     @State private var selection: Int = 0
+    
     @State private var selectedEventDate: Date?
-    private var eventData: EventData = EventData()
-    
-    var showEventView: Bool {
-        selectedEventDate != nil
+    @State private var showEvents: Bool = false
+    private var selectedDateEvents: [EKEvent]? {
+        if let eventDate = selectedEventDate {
+            let ekEvents = eventData.eventController.getEvents(date: eventDate)
+            return !ekEvents.isEmpty ? ekEvents : nil
+        } else {
+            return nil
+        }
     }
-    //let eventController: EventControllerClass = EventControllerClass(eventStore: EKEventStore())
-    
-    let padding: CGFloat = 5
     
     // イベント追加画面
     @State private var showAddEventView: Bool = false
-    // イベント一覧
     
-    init() {
-        self.shoptable = modelData()
-        
-        print(Realm.Configuration.defaultConfiguration.fileURL!)
-    }
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
@@ -42,12 +39,14 @@ struct CalendarView: View {
             let CONTENT_HEIGHT = height - 45
             let CALENDAR_WIDTH = width - 8
             var CALENDAR_EVENT_HEIGHT: CGFloat {
-                if !showEventView {
+                if !showEvents {
                     return CONTENT_HEIGHT
                 } else {
                     return CONTENT_HEIGHT / 2
                 }
-            }
+            } 
+            let padding: CGFloat = 5
+            
             ZStack {
                 customColor.homeBack.ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 0) {
@@ -82,7 +81,7 @@ struct CalendarView: View {
                         }
                         .sheet(isPresented: $showAddEventView) {
                             AddEventView()
-                                .environmentObject(eventData)
+                                //.environmentObject(eventData)
                         }
                         
                         Button{
@@ -103,14 +102,13 @@ struct CalendarView: View {
                         // カレンダー
                         VStack(spacing: 0) {
                             TabView(selection: $selection) {
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $selectedEventDate)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $selectedEventDate, showEvents: $showEvents)
                                     .background(.white)
                                     .frame(width: CALENDAR_WIDTH)
-                                    //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT)
                                     .cornerRadius(5)
                                     .tag(-1)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $selectedEventDate)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $selectedEventDate, showEvents: $showEvents)
                                     .background(.white)
                                     .frame(width: CALENDAR_WIDTH)
                                     .cornerRadius(5)
@@ -123,7 +121,7 @@ struct CalendarView: View {
                                     }
                                     .tag(0)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $selectedEventDate)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $selectedEventDate, showEvents: $showEvents)
                                     .background(.white)
                                     .frame(width: CALENDAR_WIDTH)
                                     .cornerRadius(5)
@@ -132,15 +130,19 @@ struct CalendarView: View {
                             .tabViewStyle(.page(indexDisplayMode: .never))
                         }
                         .frame(height: CALENDAR_EVENT_HEIGHT - padding)
+                        .animation(.default, value: showEvents)
                         
                         Spacer()
                         // イベント
-                        if let eventDate = selectedEventDate {
+                        if showEvents,
+                        let ekEvents = selectedDateEvents{
                             VStack(spacing: 0) {
-                                EventList(eventData.eventController.getEvents(date: eventDate), target: eventDate)
+                                EventList(ekEvents, target: selectedEventDate!)
                                     .foregroundStyle(customColor.backGround)
                             }
                             .frame(height: CALENDAR_EVENT_HEIGHT - padding)
+                            .zIndex(-1)
+                            .animation(.default, value: showEvents)
                         }
                     }
                     .frame(height: CONTENT_HEIGHT)

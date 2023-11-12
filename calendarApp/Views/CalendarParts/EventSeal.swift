@@ -11,6 +11,7 @@ import EventKit
 
 struct EventSeal: View {
     let ekEvent: EKEvent
+    var showEvents: Bool
     var countEvents: [[Int]]
     let weekCount: Int = 7
     let WIDTH_DATE: CGFloat
@@ -23,8 +24,9 @@ struct EventSeal: View {
     let title: String
     let color: CGColor
     
-    init(ekEvent: EKEvent, countEvents: [[Int]], WIDTH_DATE: CGFloat, HEIGHT_DATE: CGFloat, HEIGHT_EVENT: CGFloat, HEIGHT_EVENT_SPACE: CGFloat, CARRYOVER: Int) {
+    init(ekEvent: EKEvent, showEvents: Bool, countEvents: [[Int]], WIDTH_DATE: CGFloat, HEIGHT_DATE: CGFloat, HEIGHT_EVENT: CGFloat, HEIGHT_EVENT_SPACE: CGFloat, CARRYOVER: Int) {
         self.ekEvent = ekEvent
+        self.showEvents = showEvents
         self.countEvents = countEvents
         self.WIDTH_DATE = WIDTH_DATE
         self.HEIGHT_DATE = HEIGHT_DATE
@@ -40,19 +42,20 @@ struct EventSeal: View {
     var body: some View {
         let padding_top_leading: (top: CGFloat, leading: CGFloat) = getPaddingTopLeading(ekEvent: ekEvent, countEvents: countEvents)
         VStack(spacing: 0) {
-            Text(title)
-            //.padding(2)
-                .kerning(0)
-                .font(.system(size: 9,weight: .bold))
-                .foregroundColor(.black)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(width: WIDTH_TITLE, height: 9, alignment: .top)
-                .clipped()
+            if !showEvents {
+                Text(title)
+                    .kerning(0)
+                    .font(.system(size: 9,weight: .bold))
+                    .foregroundColor(.black)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: WIDTH_TITLE, height: 9, alignment: .top)
+                    .clipped()
+            }
             RoundedRectangle(cornerRadius: 2)
                 .fill(Color(color))
                 .frame(height: 3)
         }
-        .frame(width: WIDTH_EVENT, height: HEIGHT_EVENT)
+        .frame(width: WIDTH_EVENT, height: HEIGHT_EVENT / (showEvents ? 2 : 1))
         .padding(EdgeInsets(top: padding_top_leading.top, leading: padding_top_leading.leading, bottom: 0, trailing: 0))
     }
     
@@ -85,6 +88,6 @@ struct EventSeal_Previews: PreviewProvider {
     }
     
     static var previews: some View {
-        EventSeal(ekEvent: createEvent(), countEvents: countEvents, WIDTH_DATE: 50, HEIGHT_DATE: 10, HEIGHT_EVENT: 19, HEIGHT_EVENT_SPACE: 100, CARRYOVER: 5)
+        EventSeal(ekEvent: createEvent(), showEvents: false, countEvents: countEvents, WIDTH_DATE: 50, HEIGHT_DATE: 10, HEIGHT_EVENT: 19, HEIGHT_EVENT_SPACE: 100, CARRYOVER: 5)
     }
 }

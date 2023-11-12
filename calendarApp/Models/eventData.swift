@@ -21,7 +21,11 @@ class EventData: ObservableObject {
     
     @Published var isAllDay: Bool = false
     // 最初に表示するカレンダー
-    @Published var defaultCalendar: EKCalendar?
+    var defaultCalendar: EKCalendar? {
+        eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+    }
+    
+    @Published var currentCalendar: EKCalendar?
     
     @Published var visibleSwitch: visibleDateTime = .invisible
     
@@ -39,11 +43,11 @@ class EventData: ObservableObject {
         self.ekEvent = EKEvent(eventStore: eventStore)
         self.eventController = EventControllerClass(eventStore: eventStore)
         self.isDeleteAfterEndDate = isDeleteAfterEndDate
-        self.defaultCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
-        self.ekEvent.calendar = self.defaultCalendar
+        self.currentCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        self.ekEvent.calendar = self.currentCalendar
+        
         let calendar = DateObject().calendar
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
-        self.ekEvent.calendar = self.defaultCalendar
         let startDate = calendar.date(from: components)!
         self.ekEvent.startDate = startDate
         
@@ -57,11 +61,11 @@ class EventData: ObservableObject {
         self.ekEvent = EKEvent(eventStore: eventStore)
         self.eventController = EventControllerClass(eventStore: eventStore)
         self.isDeleteAfterEndDate = isDeleteAfterEndDate
-        self.defaultCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
-        self.ekEvent.calendar = self.defaultCalendar
+        self.currentCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        self.ekEvent.calendar = self.currentCalendar
+        
         let calendar = DateObject().calendar
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
-        self.ekEvent.calendar = self.defaultCalendar
         let startDate = calendar.date(from: components)!
         self.ekEvent.startDate = startDate
         
@@ -144,7 +148,6 @@ class EventControllerClass: EventController, ObservableObject {
         if !checkAccess() {
             if #available(iOS 17.0, *) {
                     self.eventStore.requestFullAccessToEvents { granted, error in
-                        print("re : \(granted) , ero : \(error)")
                         if granted && error == nil {
                             print("許可")
                         } else {
@@ -228,7 +231,6 @@ class EventControllerClass: EventController, ObservableObject {
     func addEvent(ekEvent: EKEvent) -> Bool {
         do {
             try self.eventStore.save(ekEvent, span: .thisEvent, commit: true)
-            try self.eventStore.commit()
         } catch  {
             return false
         }

@@ -17,7 +17,6 @@ struct EventList: View {
     let isOverMonth: Bool
     
     init(_ ekEvents: [EKEvent], start: Date, end: Date) {
-        self.ekEvents = ekEvents
         self.startDate = start
         self.endDate = end
         self.targetDate = nil
@@ -28,32 +27,36 @@ struct EventList: View {
         } else {
             isOverMonth = false
         }
+        self.ekEvents = ekEvents
+            .filter({!(start > $0.endDate || $0.startDate > end)})
+            .sorted(by: {$0.startDate < $1.startDate})
     }
     
     init(_ ekEvents: [EKEvent], target: Date) {
-        self.ekEvents = ekEvents
         self.targetDate = target
         let dateObj: DateObject = DateObject()
         
         let startDateComp = DateComponents(calendar: dateObj.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: dateObj.getYear(target), month: dateObj.getMonth(target), day: dateObj.getDay(target), hour: 0, minute: 0, second: 0)
-        self.startDate = dateObj.calendar.date(from: startDateComp)!
+        let start = dateObj.calendar.date(from: startDateComp)!
+        self.startDate = start
         
         let endDateComp = DateComponents(calendar: dateObj.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: dateObj.getYear(target), month: dateObj.getMonth(target), day: dateObj.getDay(target), hour: 23, minute: 59, second: 59)
-        self.endDate = dateObj.calendar.date(from: endDateComp)!
+        let end = dateObj.calendar.date(from: endDateComp)!
+        self.endDate = end
+        
+        self.ekEvents = ekEvents
+            .filter({!(start > $0.endDate || $0.startDate > end)})
+            .sorted(by: {$0.startDate < $1.startDate})
         
         isOverMonth = false
     }
     
     var body: some View {
-        let sortedEkEvents: [EKEvent] = ekEvents
-            .filter({startDate <= $0.startDate && $0.endDate <= endDate})
-            .sorted(by: {$0.startDate < $1.startDate})
-        
         GeometryReader { geometry in
             let width = geometry.size.width
             ScrollView {
                 LazyVStack(alignment: .center) {
-                    ForEach(sortedEkEvents, id: \.self) { ekEvent in
+                    ForEach(ekEvents, id: \.self) { ekEvent in
                         if let date = targetDate {
                             EventSealLong(ekEvent, date: date, period: .day)
                                 .frame(width: width * 0.9, height: 50)

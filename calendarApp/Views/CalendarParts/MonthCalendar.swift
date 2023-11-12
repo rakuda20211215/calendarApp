@@ -22,9 +22,9 @@ struct MonthCalendar: View {
     let week: [String]
     
     // 日付に所属するイベント一覧有効化
-    @State private var showEvents: Bool = false
+    @Binding private var showEvents: Bool
     
-    init(YEAR: Int, MONTH: Int, eventData: EventData, selectedEventDate: Binding<Date?>) {
+    init(YEAR: Int, MONTH: Int, eventData: EventData, selectedEventDate: Binding<Date?>, showEvents: Binding<Bool>) {
         self.YEAR = YEAR
         self.MONTH = MONTH
         self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
@@ -33,6 +33,7 @@ struct MonthCalendar: View {
         self.eventData = eventData
         
         self._selectedEventDate = selectedEventDate
+        self._showEvents = showEvents
     }
     
     let LINE_COLOR = Color.gray.opacity(0.5)
@@ -49,12 +50,25 @@ struct MonthCalendar: View {
             let HEIGHT_WEEK: CGFloat = 20
             let WIDTH_DATE: CGFloat = width /  CGFloat(NUMWEEK)
             let HEIGHT_DATE: CGFloat = 12
-            let HEIGHT_ROW_MONTH: CGFloat = (height - HEIGHT_WEEK) / CGFloat(NUMROWMONTH)
+            let HEIGHT_ROW_MONTH: CGFloat = (height - HEIGHT_WEEK - 6) / CGFloat(NUMROWMONTH)
             let HEIGHT_EVENT: CGFloat = 19
             let HEIGHT_EVENT_SPACE = HEIGHT_ROW_MONTH - HEIGHT_DATE
             let ROW_EVENTS: Int = Int((HEIGHT_ROW_MONTH - 10) / HEIGHT_EVENT) - 1
             
             ZStack(alignment: .topLeading) {
+                let ekEvents = eventData.eventController.getEvents(year: YEAR, month: MONTH)
+                if !ekEvents.isEmpty {
+                    ForEach(ekEvents, id: \.self) { ekEvent in
+                        EventSeal(ekEvent: ekEvent, showEvents: showEvents,
+                                  countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
+                                  WIDTH_DATE: WIDTH_DATE, HEIGHT_DATE: HEIGHT_DATE,
+                                  HEIGHT_EVENT: HEIGHT_EVENT,
+                                  HEIGHT_EVENT_SPACE: HEIGHT_EVENT_SPACE,
+                                  CARRYOVER: CARRYOVER)
+                            .padding(EdgeInsets(top: HEIGHT_WEEK, leading: 0, bottom: 0, trailing: 0))
+                        
+                    }
+                }
                 VStack(alignment: .leading, spacing: 0) {
                     // 週
                     HStack(spacing: 0) {
@@ -82,7 +96,10 @@ struct MonthCalendar: View {
                                     let thisDate: Date = Calendar.current.date(from: dateComp)!
                                     if infoMonth.rangeMonth ~= day {
                                         Button {
-                                            selectedEventDate = thisDate
+                                                selectedEventDate = thisDate
+                                                let ekEvents = eventData.eventController.getEvents(date: thisDate)
+                                                showEvents = !ekEvents.isEmpty ? true : false
+                                            
                                         } label: {
                                             //日付
                                             VStack {
@@ -103,19 +120,6 @@ struct MonthCalendar: View {
                             }
                         }
                         .frame(height: HEIGHT_ROW_MONTH, alignment: .top)
-                    }
-                }
-                let ekEvents = eventData.eventController.getEvents(year: YEAR, month: MONTH)
-                if !ekEvents.isEmpty {
-                    ForEach(ekEvents, id: \.self) { ekEvent in
-                        EventSeal(ekEvent: ekEvent,
-                                  countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
-                                  WIDTH_DATE: WIDTH_DATE, HEIGHT_DATE: HEIGHT_DATE,
-                                  HEIGHT_EVENT: HEIGHT_EVENT,
-                                  HEIGHT_EVENT_SPACE: HEIGHT_EVENT_SPACE,
-                                  CARRYOVER: CARRYOVER)
-                            .padding(EdgeInsets(top: HEIGHT_WEEK, leading: 0, bottom: 0, trailing: 0))
-                        
                     }
                 }
             }
@@ -210,6 +214,6 @@ class getInfoMonth {
 
 struct MonthCalendar_Previews: PreviewProvider {
     static var previews: some View {
-        MonthCalendar(YEAR: 2023, MONTH: 11, eventData: EventData(), selectedEventDate: Binding.constant(Date()))
+        MonthCalendar(YEAR: 2023, MONTH: 11, eventData: EventData(), selectedEventDate: Binding.constant(Date()), showEvents: Binding.constant(false))
     }
 }
