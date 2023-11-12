@@ -9,6 +9,8 @@ import Foundation
 import SwiftUI
 
 class CustomColor: ObservableObject {
+    // ホーム 後ろ
+    @Published var homeBack: Color
     @Published var foreGround: Color
     @Published var backGround: Color
     @Published var cancel: Color = .red
@@ -19,6 +21,7 @@ class CustomColor: ObservableObject {
         self.foreGround = foreGround
         self.backGround = backGround
         self.invalid = foreGround.opacity(0.5)
+        self.homeBack = .gray
         
         UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(foreGround.opacity(0.5))], for: .normal)
         UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(foreGround)], for: .selected)

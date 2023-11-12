@@ -10,16 +10,6 @@ import SwiftUI
 import RealmSwift
 import EventKitUI
 
-// title
-// date
-// calendar
-// url
-// place
-// memo
-// repetition
-// notification(通知)
-
-// isDeleteAfter
 
 class EventData: ObservableObject {
     var eventStore: EKEventStore
@@ -171,6 +161,21 @@ class EventControllerClass: EventController, ObservableObject {
             }
         }
         return checkAccess()
+    }
+    
+    func getEvents(date: Date = Date()) -> [EKEvent] {
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        components.hour = 0
+        components.minute = 0
+        components.second = 0
+        let startDate = calendar.date(from: components)
+        components.hour = 23
+        components.minute = 59
+        components.second = 59
+        let endDate = calendar.date(from: components)
+        let predicate = eventStore.predicateForEvents(withStart: startDate!, end: endDate!, calendars: getCalendars())
+        return eventStore.events(matching: predicate)
     }
     
     func getEvents(startDate: Date? = Date(), endDate: Date? = Date()) -> [EKEvent] {

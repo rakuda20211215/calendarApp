@@ -20,7 +20,7 @@ struct AddEventView: View {
         NavigationStack {
             EditEventView()
                 .environmentObject(eventData)
-                .navigationBarTitleDisplayMode(.inline)
+                //.navigationBarTitleDisplayMode(.inline)
                 .toolbar() {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {

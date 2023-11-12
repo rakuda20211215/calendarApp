@@ -485,7 +485,7 @@ struct selectDate: View {
                         VStack(spacing: 0) {
                             let year = calendar.component(.year, from: viewDate)
                             let month = calendar.component(.month, from: viewDate)
-                            let day = infoMonth.getDate(rowIndex, columnIndex, infoMonth.noWeekFirstDate)
+                            let day = infoMonth.getDay(rowIndex, columnIndex, infoMonth.noWeekFirstDate)
                             let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: day)
                             let itemDate = calendar.date(from: dateComp)!
                             

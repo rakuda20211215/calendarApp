@@ -11,16 +11,23 @@ import Foundation
 import EventKit
 
 struct CalendarView: View {
+    @EnvironmentObject private var customColor: CustomColor
     let realm = try! Realm()
     @ObservedObject private var shoptable: modelData
-    @ObservedObject private var dateObj: DateObjectForMonthEvents = DateObjectForMonthEvents()
+    @ObservedObject private var dateObj: DateObject = DateObject()
     @State private var selection: Int = 0
-    let eventController: EventControllerClass = EventControllerClass(eventStore: EKEventStore())
+    @State private var selectedEventDate: Date?
+    private var eventData: EventData = EventData()
+    
+    var showEventView: Bool {
+        selectedEventDate != nil
+    }
+    //let eventController: EventControllerClass = EventControllerClass(eventStore: EKEventStore())
     
     let padding: CGFloat = 5
     
     // イベント追加画面
-    @State private var isAddEventView: Bool = false
+    @State private var showAddEventView: Bool = false
     // イベント一覧
     
     init() {
@@ -32,15 +39,22 @@ struct CalendarView: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let height = geometry.size.height
+            let CONTENT_HEIGHT = height - 45
             let CALENDAR_WIDTH = width - 8
-            let CALENDAR_HEIGHT = height - 45
+            var CALENDAR_EVENT_HEIGHT: CGFloat {
+                if !showEventView {
+                    return CONTENT_HEIGHT
+                } else {
+                    return CONTENT_HEIGHT / 2
+                }
+            }
             ZStack {
-                Color.black.ignoresSafeArea()
+                customColor.homeBack.ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 0) {
                     // トップバー
                     HStack {
                         Text("\(dateObj.yearView.description)年\(dateObj.monthView)月")
-                            .foregroundColor(.white)
+                            .foregroundColor(customColor.backGround)
                             .font(.system(size: 20, weight: .bold))
                             .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         Spacer()
@@ -53,30 +67,31 @@ struct CalendarView: View {
                             }
                         } label: {
                             Image(systemName: "v.square.fill")
-                                .foregroundColor(.white)
+                                .foregroundColor(customColor.backGround)
                                 .font(.system(size: 20))
                                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         }
                         
                         Button{
-                            isAddEventView.toggle()
+                            showAddEventView.toggle()
                         } label: {
                             Image(systemName: "plus")
-                                .foregroundColor(.white)
+                                .foregroundColor(customColor.backGround)
                                 .font(.system(size: 20, weight: .bold))
                                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         }
-                        .sheet(isPresented: $isAddEventView) {
-                            
-                        } content: {
+                        .sheet(isPresented: $showAddEventView) {
                             AddEventView()
+                                .environmentObject(eventData)
                         }
                         
                         Button{
+                            //kari -----
+                            selectedEventDate = nil
                             
                         } label: {
                             Image(systemName: "ellipsis")
-                                .foregroundColor(.white)
+                                .foregroundColor(customColor.backGround)
                                 .font(.system(size: 20, weight: .bold))
                                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         }
@@ -88,17 +103,16 @@ struct CalendarView: View {
                         // カレンダー
                         VStack(spacing: 0) {
                             TabView(selection: $selection) {
-                                MonthCalendar(eventController: eventController, YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $selectedEventDate)
                                     .background(.white)
                                     .frame(width: CALENDAR_WIDTH)
                                     //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT)
                                     .cornerRadius(5)
                                     .tag(-1)
                                 
-                                MonthCalendar(eventController: eventController, YEAR: dateObj.yearView, MONTH: dateObj.monthView)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $selectedEventDate)
                                     .background(.white)
                                     .frame(width: CALENDAR_WIDTH)
-                                    //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT / 2)
                                     .cornerRadius(5)
                                     .onDisappear() {
                                         
@@ -109,26 +123,27 @@ struct CalendarView: View {
                                     }
                                     .tag(0)
                                 
-                                MonthCalendar(eventController: eventController, YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $selectedEventDate)
                                     .background(.white)
                                     .frame(width: CALENDAR_WIDTH)
-                                    //.frame(width: CALENDAR_WIDTH, height: CALENDAR_HEIGHT)
                                     .cornerRadius(5)
                                     .tag(1)
                             }
                             .tabViewStyle(.page(indexDisplayMode: .never))
                         }
-                        .frame(height: CALENDAR_HEIGHT / 2 - padding)
+                        .frame(height: CALENDAR_EVENT_HEIGHT - padding)
                         
                         Spacer()
                         // イベント
-                        VStack(spacing: 0) {
-                            EventList([createEvent(day: 1), createEvent(day: 2), createEvent(day: 3), createEvent(day: 4),createEvent(day: 5), createEvent(day: 6), createEvent(day: 7), createEvent(day: 8)], target: Date())
-                                .foregroundStyle(.white)
+                        if let eventDate = selectedEventDate {
+                            VStack(spacing: 0) {
+                                EventList(eventData.eventController.getEvents(date: eventDate), target: eventDate)
+                                    .foregroundStyle(customColor.backGround)
+                            }
+                            .frame(height: CALENDAR_EVENT_HEIGHT - padding)
                         }
-                        .frame(height: CALENDAR_HEIGHT / 2 - padding)
                     }
-                    .frame(height: CALENDAR_HEIGHT)
+                    .frame(height: CONTENT_HEIGHT)
                     
                     Spacer()
                 }
@@ -154,8 +169,6 @@ class DateObject: ObservableObject {
     @Published var monthView: Int
     @Published var viewDate: Date
     var rangeMonth: [Int] = Array<Int>(-2...2)
-    @Published var selection: Int? = 0
-    var oldSelection: Int = 0
     let calendar: Calendar
     
     init(viewDate: Date = Date()) {
@@ -173,38 +186,10 @@ class DateObject: ObservableObject {
     func initializObj(date: Date) {
         self.viewDate = date
         self.rangeMonth = Array<Int>(-2...2)
-        self.selection = 0
-        self.oldSelection = 0
         self.year = Calendar.current.component(.year, from: date)
         self.month = Calendar.current.component(.month, from: date)
         self.yearView = year
         self.monthView = month
-    }
-    
-    func updateDateObj() -> Void {
-        if self.selection! > self.oldSelection {
-            if (rangeMonth.count - 1) - rangeMonth.firstIndex(of: selection!)! < 3 {
-                self.rangeMonth.append(self.rangeMonth[self.rangeMonth.count - 1] + 1)
-            }
-            self.monthView += 1
-            if self.monthView > 12 {
-                self.monthView = 1
-                self.yearView += 1
-            }
-        } else if self.selection! < self.oldSelection {
-            if rangeMonth.firstIndex(of: selection!)! < 3 {
-                self.rangeMonth.insert(self.rangeMonth[0] - 1, at: 0)
-            }
-            self.monthView -= 1
-            if self.monthView < 1 {
-                self.monthView = 12
-                self.yearView -= 1
-            }
-            
-        }
-        self.oldSelection = self.selection!
-        
-        return
     }
     
     func updateDateObj(selection: Int) {
@@ -224,67 +209,19 @@ class DateObject: ObservableObject {
     }
     
     func getYear(_ date: Date = Date()) -> Int {
-        Calendar.current.component(.year, from: date)
+        calendar.component(.year, from: date)
     }
     func getMonth(_ date: Date = Date()) -> Int {
-        Calendar.current.component(.month, from: date)
+        calendar.component(.month, from: date)
     }
     func getDay(_ date: Date = Date()) -> Int {
-        Calendar.current.component(.day, from: date)
+        calendar.component(.day, from: date)
     }
     func getHour(_ date: Date = Date()) -> Int {
-        Calendar.current.component(.hour, from: date)
+        calendar.component(.hour, from: date)
     }
     func getMinute(_ date: Date = Date()) -> Int {
-        Calendar.current.component(.minute, from: date)
-    }
-}
-
-class DateObjectForMonthEvents: DateObject {
-    /*
-    func updateDateObj(selection: Int) {
-        if selection < 0 {
-            self.monthView -= 1
-            if self.monthView < 1 {
-                self.monthView = 12
-                self.yearView -= 1
-            }
-        } else {
-            self.monthView += 1
-            if self.monthView > 12 {
-                self.monthView = 1
-                self.yearView += 1
-            }
-        }
-    }
-     */
-    
-    func updateDateObj(_ rM: [Int], selection: Int) -> [Int] {
-        print("\(selection):\(self.oldSelection)")
-        var rangeMonth = rM
-        if selection > self.oldSelection {
-            rangeMonth.append(rangeMonth[rangeMonth.count - 1] + 1)
-            //rangeMonth.remove(at: 0)
-            
-            self.monthView += 1
-            if self.monthView > 12 {
-                self.monthView = 1
-                self.yearView += 1
-            }
-        } else if selection < self.oldSelection {
-            rangeMonth.insert(rangeMonth[0] - 1, at: 0)
-            //rangeMonth.remove(at: rangeMonth.count - 1)
-            
-            self.monthView -= 1
-            if self.monthView < 1 {
-                self.monthView = 12
-                self.yearView -= 1
-            }
-        }
-        print(rangeMonth)
-        self.oldSelection = selection
-        
-        return rangeMonth
+        calendar.component(.minute, from: date)
     }
 }
 

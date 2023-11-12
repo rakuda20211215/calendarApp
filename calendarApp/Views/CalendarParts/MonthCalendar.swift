@@ -10,7 +10,8 @@ import UIKit
 import EventKit
 
 struct MonthCalendar: View {
-    let ekEvents: [EKEvent]?
+    @ObservedObject var eventData: EventData
+    @Binding var selectedEventDate: Date?
     
     var startWeek: String
     let NUMWEEK = 7
@@ -23,26 +24,15 @@ struct MonthCalendar: View {
     // 日付に所属するイベント一覧有効化
     @State private var showEvents: Bool = false
     
-    init(_ ekEvents: [EKEvent]? = nil, YEAR: Int, MONTH: Int) {
+    init(YEAR: Int, MONTH: Int, eventData: EventData, selectedEventDate: Binding<Date?>) {
         self.YEAR = YEAR
         self.MONTH = MONTH
         self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
         self.week = infoMonth.getWeek()
         self.startWeek = self.week[0]
-        self.ekEvents = ekEvents
-    }
-    
-    init(eventController: EventControllerClass, YEAR: Int, MONTH: Int) {
-        self.YEAR = YEAR
-        self.MONTH = MONTH
-        self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
-        self.week = infoMonth.getWeek()
-        self.startWeek = self.week[0]
-        if eventController.checkAccess() {
-            self.ekEvents = eventController.getEvents(year: YEAR, month: MONTH)
-        } else {
-            self.ekEvents = nil
-        }
+        self.eventData = eventData
+        
+        self._selectedEventDate = selectedEventDate
     }
     
     let LINE_COLOR = Color.gray.opacity(0.5)
@@ -87,14 +77,23 @@ struct MonthCalendar: View {
                         HStack(spacing: 0) {
                             ForEach(0..<NUMWEEK, id: \.self) { columnIndex in
                                 VStack(spacing: 0) {
-                                    if infoMonth.rangeMonth ~= infoMonth.getDate(rowIndex, columnIndex, CARRYOVER) {
-                                        
-                                        //日付
-                                        Text(infoMonth.getDate(rowIndex, columnIndex, CARRYOVER).description)
-                                            .foregroundStyle(.black)
-                                            .frame(width: WIDTH_DATE, height: HEIGHT_DATE, alignment: .center)
-                                            .font(.system(size: 10))
-                                            .frame(width: WIDTH_DATE)
+                                    let day: Int = infoMonth.getDay(rowIndex, columnIndex, CARRYOVER)
+                                    let dateComp: DateComponents = DateComponents(year: YEAR, month: MONTH, day: day)
+                                    let thisDate: Date = Calendar.current.date(from: dateComp)!
+                                    if infoMonth.rangeMonth ~= day {
+                                        Button {
+                                            selectedEventDate = thisDate
+                                        } label: {
+                                            //日付
+                                            VStack {
+                                                Text(infoMonth.getDay(rowIndex, columnIndex, CARRYOVER).description)
+                                                    .foregroundStyle(.black)
+                                                    .frame(width: WIDTH_DATE, height: HEIGHT_DATE, alignment: .center)
+                                                    .font(.system(size: 10))
+                                                    .frame(width: WIDTH_DATE)
+                                            }
+                                            .frame(height: HEIGHT_ROW_MONTH, alignment: .top)
+                                        }
                                         
                                     } else {
                                         Text("")
@@ -106,7 +105,8 @@ struct MonthCalendar: View {
                         .frame(height: HEIGHT_ROW_MONTH, alignment: .top)
                     }
                 }
-                if let ekEvents = ekEvents {
+                let ekEvents = eventData.eventController.getEvents(year: YEAR, month: MONTH)
+                if !ekEvents.isEmpty {
                     ForEach(ekEvents, id: \.self) { ekEvent in
                         EventSeal(ekEvent: ekEvent,
                                   countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
@@ -194,7 +194,7 @@ class getInfoMonth {
         self.rangeMonth = rangeMonth
     }
     
-    func getDate(_ row: Int, _ column: Int, _ carryover: Int) -> Int {
+    func getDay(_ row: Int, _ column: Int, _ carryover: Int) -> Int {
         return (row * 7 + column + 1) - carryover
     }
     
@@ -210,6 +210,6 @@ class getInfoMonth {
 
 struct MonthCalendar_Previews: PreviewProvider {
     static var previews: some View {
-        MonthCalendar(EventControllerClass(eventStore: EKEventStore()).getEvents(), YEAR: 2023, MONTH: 11)
+        MonthCalendar(YEAR: 2023, MONTH: 11, eventData: EventData(), selectedEventDate: Binding.constant(Date()))
     }
 }
