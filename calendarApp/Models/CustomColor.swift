@@ -20,8 +20,8 @@ class CustomColor: ObservableObject {
     init(foreGround: Color, backGround: Color) {
         self.foreGround = foreGround
         self.backGround = backGround
-        self.invalid = foreGround.opacity(0.5)
-        self.homeBack = .gray
+        self.invalid = foreGround.opacity(0.8)
+        self.homeBack = foreGround.opacity(0.8)
         
         UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(foreGround.opacity(0.5))], for: .normal)
         UISegmentedControl.appearance().setTitleTextAttributes([.foregroundColor: UIColor(foreGround)], for: .selected)

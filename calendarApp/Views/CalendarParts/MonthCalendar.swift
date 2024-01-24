@@ -96,10 +96,10 @@ struct MonthCalendar: View {
                                     let thisDate: Date = Calendar.current.date(from: dateComp)!
                                     if infoMonth.rangeMonth ~= day {
                                         Button {
+                                            if !eventData.eventController.getEvents(date: thisDate).isEmpty {
                                                 selectedEventDate = thisDate
-                                                let ekEvents = eventData.eventController.getEvents(date: thisDate)
-                                                showEvents = !ekEvents.isEmpty ? true : false
-                                            
+                                                showEvents = true
+                                            }
                                         } label: {
                                             //日付
                                             VStack {
@@ -123,6 +123,8 @@ struct MonthCalendar: View {
                     }
                 }
             }
+                .background(.white)
+                .cornerRadius(5)
         }
     }
     
@@ -163,7 +165,9 @@ func createEvent(day: Int) -> EKEvent {
     calendar.cgColor = CGColor(red: CGFloat(r) / CGFloat(30), green: CGFloat(g) /  CGFloat(30), blue: CGFloat(b) / CGFloat(30), alpha: 1)
     ekEvent.calendar = calendar
     ekEvent.title = "titleTest \(day)"
+    ekEvent.url = URL(string: "https://lepl.net")
     ekEvent.location = "山口県"
+    ekEvent.recurrenceRules = [EKRecurrenceRule(recurrenceWith: .daily, interval: 5, end: nil)]
     let year = DateObject().getYear(Date())
     let month = DateObject().getMonth(Date())
     ekEvent.startDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: year, month: month, day: day, hour: r % 24))

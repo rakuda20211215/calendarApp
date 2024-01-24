@@ -17,7 +17,7 @@ class EventData: ObservableObject {
     @Published var ekEvent: EKEvent
     @Published var eventController: EventControllerClass
     // 日付が過ぎると消去
-    @Published var isDeleteAfterEndDate: Bool
+    //@Published var isDeleteAfterEndDate: Bool
     
     @Published var isAllDay: Bool = false
     // 最初に表示するカレンダー
@@ -28,6 +28,9 @@ class EventData: ObservableObject {
     @Published var currentCalendar: EKCalendar?
     
     @Published var visibleSwitch: visibleDateTime = .invisible
+    
+    @Published var selectedEventDate: Date?
+    @Published var showEvents: Bool = false
     
     static func compareStartEnd(ekEvent: EKEvent, date: Date) -> Void {
         let start: Date = ekEvent.startDate
@@ -42,7 +45,7 @@ class EventData: ObservableObject {
         self.eventStore = EKEventStore()
         self.ekEvent = EKEvent(eventStore: eventStore)
         self.eventController = EventControllerClass(eventStore: eventStore)
-        self.isDeleteAfterEndDate = isDeleteAfterEndDate
+        //self.isDeleteAfterEndDate = isDeleteAfterEndDate
         self.currentCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
         self.ekEvent.calendar = self.currentCalendar
         
@@ -51,7 +54,9 @@ class EventData: ObservableObject {
         let startDate = calendar.date(from: components)!
         self.ekEvent.startDate = startDate
         
-        components.second = 30
+        if let hour = components.hour {
+            components.hour = hour + 1
+        }
         let endDate = calendar.date(from: components)!
         self.ekEvent.endDate = endDate
     }
@@ -60,7 +65,7 @@ class EventData: ObservableObject {
         self.eventStore = EKEventStore()
         self.ekEvent = EKEvent(eventStore: eventStore)
         self.eventController = EventControllerClass(eventStore: eventStore)
-        self.isDeleteAfterEndDate = isDeleteAfterEndDate
+        //self.isDeleteAfterEndDate = isDeleteAfterEndDate
         self.currentCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
         self.ekEvent.calendar = self.currentCalendar
         
@@ -107,7 +112,7 @@ protocol EventController {
     // カレンダー追加
     func addCalendar(nameCalendar: String, cgColor: CGColor) -> Bool
     // 消去
-    func removeEvent(idEvent: String) -> Bool
+    func removeEvent(idEvent: String, span: EKSpan) -> Bool
 }
 
 // 純正カレンダーとの連絡
@@ -119,11 +124,9 @@ class EventControllerClass: EventController, ObservableObject {
         self.eventStore = eventStore
         self.calendar = DateObject().calendar
         if !checkAccess() {
-            self.eventStore.requestAccess(to: .event, completion: { (granted, error) in
-                if granted && error == nil {
-                    print("許可")
-                }
-            })
+            Task {
+                await self.requestAccess()
+            }
         }
     }
     
@@ -147,18 +150,20 @@ class EventControllerClass: EventController, ObservableObject {
     func requestAccess() async -> Bool {
         if !checkAccess() {
             if #available(iOS 17.0, *) {
-                    self.eventStore.requestFullAccessToEvents { granted, error in
-                        if granted && error == nil {
-                            print("許可")
-                        } else {
-                        }
+                self.eventStore.requestFullAccessToEvents { granted, error in
+                    if granted && error == nil {
+                        print("許可")
+                    } else {
+                        print("拒否")
                     }
+                }
             } else {
                 // Fallback on earlier versions
                 self.eventStore.requestAccess(to: .event, completion: { (granted, error) in
                     if granted && error == nil {
                         print("許可")
                     } else {
+                        print("拒否")
                     }
                 })
             }
@@ -236,7 +241,7 @@ class EventControllerClass: EventController, ObservableObject {
         }
         return true
     }
-
+    
     
     func addCalendar(nameCalendar: String, cgColor: CGColor) -> Bool {
         let calendar = EKCalendar(for: .event, eventStore: eventStore)
@@ -250,10 +255,22 @@ class EventControllerClass: EventController, ObservableObject {
         return true
     }
     
-    func removeEvent(idEvent: String) -> Bool {
-        let event: EKEvent = eventStore.event(withIdentifier: idEvent)!
+    func removeEvent(idEvent: String, span: EKSpan = .thisEvent) -> Bool {
+        if let event: EKEvent = eventStore.event(withIdentifier: idEvent) {
+            do {
+                try eventStore.remove(event, span: span, commit: true)
+            } catch {
+                return false
+            }
+            return true
+        } else {
+            return false
+        }
+    }
+    
+    func removeEvent(ekEvent: EKEvent, span: EKSpan = .thisEvent) -> Bool {
         do {
-            try eventStore.remove(event, span: .thisEvent)
+            try eventStore.remove(ekEvent, span: span, commit: true)
         } catch {
             return false
         }
@@ -279,3 +296,4 @@ class CalendarDataManager {
         self.isSpan = isSpan
     }
 }
+

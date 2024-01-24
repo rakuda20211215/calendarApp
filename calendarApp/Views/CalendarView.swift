@@ -12,16 +12,12 @@ import EventKit
 
 struct CalendarView: View {
     @EnvironmentObject private var customColor: CustomColor
-    private var eventData: EventData = EventData()
-    //let realm = try! Realm()
-    //@ObservedObject private var shoptable: modelData
+    @ObservedObject private var eventData: EventData = EventData()
     @ObservedObject private var dateObj: DateObject = DateObject()
     @State private var selection: Int = 0
     
-    @State private var selectedEventDate: Date?
-    @State private var showEvents: Bool = false
     private var selectedDateEvents: [EKEvent]? {
-        if let eventDate = selectedEventDate {
+        if let eventDate = eventData.selectedEventDate {
             let ekEvents = eventData.eventController.getEvents(date: eventDate)
             return !ekEvents.isEmpty ? ekEvents : nil
         } else {
@@ -32,6 +28,21 @@ struct CalendarView: View {
     // イベント追加画面
     @State private var showAddEventView: Bool = false
     
+    var dateFormatterDate: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.timeZone = TimeZone(identifier:  "Asia/Tokyo")
+        if let date = eventData.selectedEventDate,
+           (dateObj.getYear(date) != dateObj.getYear()
+            || dateObj.getYear(date) != dateObj.yearView) {
+            formatter.dateFormat = "yyyy年M月d日(EEEEE)"
+        } else {
+            formatter.dateFormat = "M月d日(EEEEE)"
+        }
+        return formatter
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
@@ -39,12 +50,12 @@ struct CalendarView: View {
             let CONTENT_HEIGHT = height - 45
             let CALENDAR_WIDTH = width - 8
             var CALENDAR_EVENT_HEIGHT: CGFloat {
-                if !showEvents {
+                if !eventData.showEvents {
                     return CONTENT_HEIGHT
                 } else {
                     return CONTENT_HEIGHT / 2
                 }
-            } 
+            }
             let padding: CGFloat = 5
             
             ZStack {
@@ -81,12 +92,12 @@ struct CalendarView: View {
                         }
                         .sheet(isPresented: $showAddEventView) {
                             AddEventView()
-                                //.environmentObject(eventData)
+                            //.environmentObject(eventData)
                         }
                         
                         Button{
                             //kari -----
-                            selectedEventDate = nil
+                            eventData.selectedEventDate = nil
                             
                         } label: {
                             Image(systemName: "ellipsis")
@@ -96,22 +107,18 @@ struct CalendarView: View {
                         }
                     }
                     
-                    // カレンダーの日付にtapgestureを追加---------------------------------------------------
+                    //
                     // カレンダー と　イベント
                     VStack {
                         // カレンダー
                         VStack(spacing: 0) {
                             TabView(selection: $selection) {
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $selectedEventDate, showEvents: $showEvents)
-                                    .background(.white)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, showEvents: $eventData.showEvents)
                                     .frame(width: CALENDAR_WIDTH)
-                                    .cornerRadius(5)
                                     .tag(-1)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $selectedEventDate, showEvents: $showEvents)
-                                    .background(.white)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, showEvents: $eventData.showEvents)
                                     .frame(width: CALENDAR_WIDTH)
-                                    .cornerRadius(5)
                                     .onDisappear() {
                                         
                                         if selection != 0 {
@@ -121,36 +128,64 @@ struct CalendarView: View {
                                     }
                                     .tag(0)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $selectedEventDate, showEvents: $showEvents)
-                                    .background(.white)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, showEvents: $eventData.showEvents)
                                     .frame(width: CALENDAR_WIDTH)
-                                    .cornerRadius(5)
                                     .tag(1)
                             }
                             .tabViewStyle(.page(indexDisplayMode: .never))
                         }
                         .frame(height: CALENDAR_EVENT_HEIGHT - padding)
-                        .animation(.default, value: showEvents)
+                        .animation(.easeOut, value: eventData.showEvents)
                         
                         Spacer()
                         // イベント
-                        if showEvents,
-                        let ekEvents = selectedDateEvents{
+                        if eventData.showEvents,
+                           let ekEvents = selectedDateEvents {
                             VStack(spacing: 0) {
-                                EventList(ekEvents, target: selectedEventDate!)
+                                HStack(spacing: 0) {
+                                    Text(dateFormatterDate.string(from: eventData.selectedEventDate!))
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(customColor.backGround)
+                                    Spacer()
+                                    Button {
+                                        eventData.showEvents.toggle()
+                                    } label: {
+                                        Image(systemName: "triangle.fill")
+                                            .resizable()
+                                            .rotation3DEffect(
+                                                .degrees(180),axis: (x: 1.0, y: 0.0, z: 0.0)
+                                            )
+                                            .foregroundStyle(customColor.backGround)
+                                            .frame(width: 10, height: 10)
+                                            .padding(5)
+                                    }
+                                }
+                                .padding(15)
+                                .frame(width: width * 0.95, height: 30)
+                                .background(.black.opacity(0.4))
+                                .clipShape(RoundedRectangle(cornerRadius: 15))
+                                /*
+                                 .overlay {
+                                 RoundedRectangle(cornerRadius: 15)
+                                 .stroke(.white, lineWidth: 1)
+                                 }
+                                 */
+                                
+                                EventList(ekEvents, target: eventData.selectedEventDate!)
                                     .foregroundStyle(customColor.backGround)
+                                    .environmentObject(eventData)
                             }
                             .frame(height: CALENDAR_EVENT_HEIGHT - padding)
                             .zIndex(-1)
-                            .animation(.default, value: showEvents)
+                            .animation(.easeOut, value: eventData.showEvents)
                         }
+                        
                     }
                     .frame(height: CONTENT_HEIGHT)
                     
                     Spacer()
                 }
             }
-            
         }
     }
 }

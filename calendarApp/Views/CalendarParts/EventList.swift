@@ -7,6 +7,8 @@
 
 import SwiftUI
 import EventKit
+import CoreGraphics
+import MapKit
 
 struct EventList: View {
     let ekEvents: [EKEvent]
@@ -52,6 +54,7 @@ struct EventList: View {
     }
     
     var body: some View {
+        let eventSealLong: CGFloat = 45
         GeometryReader { geometry in
             let width = geometry.size.width
             ScrollView {
@@ -59,26 +62,29 @@ struct EventList: View {
                     ForEach(ekEvents, id: \.self) { ekEvent in
                         if let date = targetDate {
                             EventSealLong(ekEvent, date: date, period: .day)
-                                .frame(width: width * 0.9, height: 50)
+                                .frame(width: width * 0.9, height: eventSealLong)
                         } else {
                             if isOverMonth {
                                 EventSealLong(ekEvent, period: .year)
-                                    .frame(width: width * 0.9, height: 50)
+                                    .frame(width: width * 0.9, height: eventSealLong)
                             } else {
                                 EventSealLong(ekEvent, period: .month)
-                                    .frame(width: width * 0.9, height: 50)
+                                    .frame(width: width * 0.9, height: eventSealLong)
                             }
                         }
                     }
                 }
                 .frame(width: width, alignment: .center)
+                .padding(EdgeInsets(top: 15, leading: 0, bottom: 0, trailing: 0))
             }
         }
     }
 }
 
 struct EventSealLong: View {
+    @EnvironmentObject private var customColor: CustomColor
     let ekEvent: EKEvent
+    //let eventController: EventControllerClass
     var isAllDayStart: Bool = false
     var isAllDayend:   Bool = false
     var startTime: String
@@ -87,29 +93,34 @@ struct EventSealLong: View {
     let period: dateElements
     
     @State private var infoSelection: infoElements?
+    @State private var showInfo: Bool = false
+    
     @State private var showEventSheet: Bool = false
     
     init(_ ekEvent: EKEvent, date: Date? = Date(), period: dateElements = .day) {
         self.ekEvent = ekEvent
+        //let eventStore = EKEventStore()
+        //self.eventController = EventControllerClass(eventStore: eventStore)
         
         self.period = period
         
         let dateObj: DateObject = DateObject()
         
+        let startDay: Int = dateObj.getDay(ekEvent.startDate)
+        let endDay:   Int = dateObj.getDay(ekEvent.endDate)
+        
         switch period {
         case .year:
-            self.startTime = "\(dateObj.getMonth(ekEvent.startDate)) / \(dateObj.getDay(ekEvent.startDate))"
-            self.endTime   = "\(dateObj.getMonth(ekEvent.endDate)) / \(dateObj.getDay(ekEvent.endDate))"
+            self.startTime = "\(dateObj.getMonth(ekEvent.startDate)) / \(startDay)"
+            self.endTime   = "\(dateObj.getMonth(ekEvent.endDate)) / \(endDay)"
         case .month:
-            self.startTime = "\(dateObj.getDay(ekEvent.startDate))"
-            self.endTime   = "\(dateObj.getDay(ekEvent.endDate))"
+            self.startTime = "\(startDay)"
+            self.endTime   = "\(endDay)"
         default:
             // 終日チェック
             let day: Int = dateObj.getDay(date!)
-            let startDate: Int = dateObj.getDay(ekEvent.startDate)
-            let endDate: Int = dateObj.getDay(ekEvent.endDate)
             
-            if startDate == day {
+            if startDay == day {
                 startTime = "\(dateObj.getHour(ekEvent.startDate)):\(String(format: "%02d", (dateObj.getMinute(ekEvent.startDate))))"
                 
                 if 0 == dateObj.getHour(ekEvent.startDate)
@@ -123,7 +134,7 @@ struct EventSealLong: View {
                 isAllDayStart = true
             }
             
-            if endDate == day {
+            if endDay == day {
                 endTime = "\(dateObj.getHour(ekEvent.endDate)):\(String(format: "%02d", (dateObj.getMinute(ekEvent.endDate))))"
                 
                 if 23 == dateObj.getHour(ekEvent.endDate)
@@ -144,18 +155,22 @@ struct EventSealLong: View {
             let width: CGFloat  = geometry.size.width
             let height: CGFloat = geometry.size.height
             let padding: CGFloat = 10
-            let rectangleWidth: CGFloat = 15
+            let rectangleWidth: CGFloat = 13
             let triangleSize: CGFloat = 8
             let timeWidth: CGFloat = 60
             let locationSize: CGFloat = 10
-            let infoCircleSize: CGFloat = 20
+            let infoCircleSize: CGFloat = 16
             let titleWidth: CGFloat = width - rectangleWidth - timeWidth - infoCircleSize - (padding * 2)
             let titleHeight: CGFloat = height - padding
             let centerSpace: CGFloat = height * 0.05
             HStack(spacing: 0) {
                 // カレンダー色の図形
-                RoundedRectangle(cornerRadius: width, style: .circular)
-                    .fill(Color(ekEvent.calendar.cgColor))
+                /*
+                 RoundedRectangle(cornerRadius: width, style: .circular)
+                 .fill(Color(ekEvent.calendar.cgColor))
+                 .frame(width: rectangleWidth)
+                 */
+                EventSealLongRectangle(isAllDayStart: isAllDayStart, isAllDayEnd: isAllDayend, color: Color(ekEvent.calendar.cgColor))
                     .frame(width: rectangleWidth)
                 HStack {
                     // 日付
@@ -193,7 +208,7 @@ struct EventSealLong: View {
                             }
                         }
                     }
-                    .font(.system(size: 15))
+                    .font(.system(size: 13))
                     .frame(width: timeWidth)
                     
                     VStack(alignment: .leading, spacing: 0) {
@@ -209,7 +224,7 @@ struct EventSealLong: View {
                                     .font(.system(size: 13))
                             }
                         } else {
-                            Text(" ")
+                            Text("")
                                 .font(.system(size: 13))
                         }
                         Spacer()
@@ -227,45 +242,244 @@ struct EventSealLong: View {
                 }
                 
                 Menu {
-                    Button {
-                        infoSelection = .copy
-                    } label: {
-                        Text("イベントを複製").tag(infoElements.copy)
-                    }
-                    Divider()
                     if ekEvent.location != nil {
                         Button {
                             infoSelection = .location
+                            showInfo.toggle()
                         } label: {
-                            Text("マップを表示").tag(infoElements.location)
+                            Label(infoElements.location.rawValue, systemImage: "map")
                         }
                     }
                     if ekEvent.url != nil {
                         Button {
                             infoSelection = .url
+                            showInfo.toggle()
                         } label: {
-                            Text("ブラウザを表示").tag(infoElements.url)
+                            Label(infoElements.url.rawValue, systemImage: "network")
                         }
                     }
                     Divider()
-                    Button(role: .destructive) {
-                        infoSelection = .delete
+                    Button {
+                        infoSelection = .copy
                     } label: {
-                        Label("消去", systemImage: "trash")
+                        Label(infoElements.copy.rawValue, image: "calendar_add")
+                    }
+                    Button(role: .destructive) {
+                        infoSelection = .remove
+                        showInfo.toggle()
+                    } label: {
+                        Label(infoElements.remove.rawValue, systemImage: "trash")
                             .foregroundColor(.red)
                     }
                 } label: {
-                    Image(systemName: "info.circle")
+                    Image(systemName: "ellipsis.circle")
                         .resizable()
+                        .renderingMode(.original)
+                        .foregroundStyle(customColor.backGround)
                         .frame(width: infoCircleSize, height: infoCircleSize)
-                        .foregroundColor(.red.opacity(0.8))
                         .padding(padding)
                 }
                 .menuOrder(.fixed)
+                
+                Spacer()
             }
             .lineLimit(1)
             .sheet(isPresented: $showEventSheet) {
                 Text("\(ekEvent)")
+                    .foregroundStyle(customColor.foreGround)
+            }
+            .sheet(isPresented: $showInfo) {
+                BrowsOrRemoveOrMap(ekEvent: ekEvent, showInfo: $showInfo, infoSelection: $infoSelection)
+            }
+        }
+    }
+    
+    struct BrowsOrRemoveOrMap: View {
+        @EnvironmentObject private var customColor: CustomColor
+        var ekEvent: EKEvent
+        
+        @Binding var showInfo: Bool
+        @Binding var infoSelection: infoElements?
+        
+        init(ekEvent: EKEvent, showInfo: Binding<Bool>, infoSelection: Binding<infoElements?>) {
+            self.ekEvent = ekEvent
+            self._showInfo = showInfo
+            self._infoSelection = infoSelection
+        }
+        var body: some View {
+            NavigationStack {
+                switch infoSelection {
+                case .location:
+                    MapSheet(address: ekEvent.location!, showInfo: $showInfo)
+                case .url:
+                    BrowsSheet()
+                case .remove:
+                    RemoveSheet(ekEvent: ekEvent, showInfo: $showInfo)
+                default:
+                    Text("")
+                        .onAppear {
+                            showInfo = false
+                        }
+                }
+            }
+            .presentationDetents(infoSelection == .remove  ? [.height(ekEvent.hasRecurrenceRules ? 170 : 120)]: [.large])
+            .presentationBackground(.thinMaterial)
+        }
+    }
+    
+    struct MapSheet: View {
+        @EnvironmentObject private var customColor: CustomColor
+        let address: String
+        @State private var coordinate: CLLocationCoordinate2D?
+        @State private var region: MKCoordinateRegion = MKCoordinateRegion()
+        @Binding var showInfo: Bool
+        
+        var body: some View {
+            VStack {
+                if #available(iOS 17.0, *) {
+                    Map {
+                        if let coordinate = self.coordinate {
+                                Marker(address, coordinate: coordinate)
+                                    .tint(.orange)
+                        }
+                        
+                    }
+                    .mapControlVisibility(.hidden)
+                    .onAppear {
+                        setCoordinate(address) { location in
+                            self.coordinate = CLLocationCoordinate2D(latitude: location[0], longitude: location[1])
+                        }
+                    }
+                } else {
+                    Map(coordinateRegion: $region)
+                        .onAppear {
+                            setRegion()
+                        }
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showInfo.toggle()
+                    } label: {
+                        Image(systemName: "multiply")
+                            .foregroundStyle(customColor.foreGround)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text(address)
+                        .foregroundStyle(customColor.foreGround)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        
+        private func setCoordinate(_ address: String, _ set:@escaping ([CLLocationDegrees]) -> Void) {
+            CLGeocoder().geocodeAddressString(address) { placemarks, error in
+                guard error == nil,
+                      let latitude = placemarks?.first?.location?.coordinate.latitude,
+                      let longitude = placemarks?.first?.location?.coordinate.longitude else { return }
+                print("DEBUG: latitude : \(latitude)")
+                print("DEBUG: logitude : \(longitude)")
+                set([latitude, longitude])
+            }
+        }
+        
+        
+        private func setRegion() {
+            guard let coordinate = coordinate else { return }
+            region = MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2))
+        }
+    }
+    
+    struct BrowsSheet: View {
+        var body: some View {
+            Text("browser")
+        }
+    }
+    
+    struct RemoveSheet: View {
+        @EnvironmentObject var customColor: CustomColor
+        @EnvironmentObject var eventData: EventData
+        var ekEvent: EKEvent
+        @Binding var showInfo: Bool
+        
+        var body: some View {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                VStack {
+                    VStack(spacing: 5){
+                        HStack {
+                            Image(systemName: "delete.left.fill")
+                                .resizable()
+                                .frame(width: 22, height: 17)
+                                .fontWeight(.bold)
+                            Spacer()
+                            Text("このイベント")
+                                .font(.system(size: 17))
+                            Spacer()
+                        }
+                        .frame(width: width / 1.5, height: 25, alignment: .center)
+                        .padding(10)
+                        .background(.gray.opacity(0.3))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .padding(5)
+                        .onTapGesture {
+                            showInfo.toggle()
+                            let isDelete = eventData.eventController.removeEvent(ekEvent: ekEvent, span: .thisEvent)
+                            if isDelete {
+                                //成否のメッセージ
+                                
+                                eventData.selectedEventDate = eventData.selectedEventDate
+                                if let eventDate = eventData.selectedEventDate {
+                                    let selectedDatesEvent = eventData.eventController.getEvents(date: eventDate)
+                                    if selectedDatesEvent.count == 0 {
+                                        eventData.showEvents.toggle()
+                                    }
+                                }
+                            }
+                            
+                        }
+                        if ekEvent.hasRecurrenceRules {
+                            HStack {
+                                Image("tab_close")
+                                    .resizable()
+                                    .frame(width: 22, height: 18)
+                                    .fontWeight(.light)
+                                Spacer()
+                                Text("これ以降すべて")
+                                    .font(.system(size: 17))
+                                Spacer()
+                            }
+                            .frame(width: width / 1.5, height: 20, alignment: .center)
+                            .padding(10)
+                            .background(.gray.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(5)
+                            .onTapGesture {
+                                showInfo.toggle()
+                                eventData.eventController.removeEvent(ekEvent: ekEvent, span: .futureEvents)
+                            }
+                        }
+                    }
+                    .foregroundStyle(customColor.foreGround)
+                }
+                .frame(width: width)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showInfo.toggle()
+                        } label: {
+                            Image(systemName: "multiply")
+                                .foregroundStyle(customColor.foreGround)
+                        }
+                    }
+                    ToolbarItem(placement: .principal) {
+                        Text("消去")
+                            .foregroundStyle(customColor.foreGround)
+                    }
+                }
+                .navigationBarTitleDisplayMode(.inline)
             }
         }
     }
@@ -274,235 +488,83 @@ struct EventSealLong: View {
         case copy = "イベントを複製"
         case location = "マップを表示"
         case url = "ブラウザを表示"
-        case delete = "消去"
+        case remove = "消去"
     }
 }
-/*
-struct EventSealLong: View {
-    let ekEvent: EKEvent
+
+struct EventSealLongRectangle: View {
+    let parameters: EventSealLongParameters
     let isAllDayStart: Bool
-    let isAllDayend:   Bool
-    var startTime: String
-    var endTime:   String
-    let dateElement: dateElements
+    let isAllDayend: Bool
+    let color: Color
     
-    @State private var infoSelection: infoElements?
-    @State private var showEventSheet: Bool = false
-    
-    init(_ ekEvent: EKEvent = createEvent(day: 11), date: Date = Date(), dateElement: dateElements) {
-        self.ekEvent = ekEvent
-        // 終日チェック
-        let dateObj: DateObject = DateObject()
-        let day: Int = dateObj.getDay(date)
-        let startDate: Int = dateObj.getDay(ekEvent.startDate)
-        let endDate: Int = dateObj.getDay(ekEvent.endDate)
-        
-        switch dateElement {
-        case .year:
-            self.isAllDayStart = false
-            self.isAllDayend = false
-            self.startTime = "\(dateObj.getMonth(ekEvent.startDate)) / \(dateObj.getDay(ekEvent.startDate))"
-            self.endTime   = "\(dateObj.getMonth(ekEvent.endDate)) / \(dateObj.getDay(ekEvent.endDate))"
-        case .month, .week:
-            self.isAllDayStart = false
-            self.isAllDayend = false
-            self.startTime = "\(dateObj.getDay(ekEvent.startDate))"
-            self.endTime = "\(dateObj.getDay(ekEvent.endDate))"
-        default:
-            if startDate == day {
-                startTime = "\(dateObj.getHour(ekEvent.startDate)):\(String(format: "%02d", (dateObj.getMinute(ekEvent.startDate))))"
-                
-                if 0 == dateObj.getHour(ekEvent.startDate)
-                    && 0 == dateObj.getMinute(ekEvent.startDate) {
-                    isAllDayStart = true
-                } else {
-                    isAllDayStart = false
-                }
-            } else {
-                startTime = ""
-                isAllDayStart = true
-            }
-            
-            if endDate == day {
-                endTime = "\(dateObj.getHour(ekEvent.endDate)):\(String(format: "%02d", (dateObj.getMinute(ekEvent.endDate))))"
-                
-                if 23 == dateObj.getHour(ekEvent.endDate)
-                    && 59 == dateObj.getMinute(ekEvent.endDate) {
-                    isAllDayend = true
-                } else {
-                    isAllDayend = false
-                }
-            } else {
-                endTime = ""
-                isAllDayend = true
-            }
-        }
-        
-        self.dateElement = dateElement
+    init(isAllDayStart: Bool, isAllDayEnd: Bool, color: Color) {
+        self.parameters = EventSealLongParameters(start: isAllDayStart, end: isAllDayEnd)
+        self.isAllDayStart = isAllDayStart
+        self.isAllDayend = isAllDayEnd
+        self.color = color
     }
     
     var body: some View {
         GeometryReader { geometry in
-            let width: CGFloat  = geometry.size.width
-            let height: CGFloat = geometry.size.height
-            let padding: CGFloat = 10
-            let rectangleWidth: CGFloat = 15
-            let triangleSize: CGFloat = 8
-            let timeWidth: CGFloat = 60
-            let locationSize: CGFloat = 10
-            let infoCircleSize: CGFloat = 20
-            let titleWidth: CGFloat = width - rectangleWidth - timeWidth - infoCircleSize - (padding * 2)
-            let centerSpace: CGFloat = height * 0.05
-            HStack(spacing: 0) {
-                // カレンダー色の図形
-                RoundedRectangle(cornerRadius: width, style: .circular)
-                    .fill(Color(ekEvent.calendar.cgColor))
-                    .frame(width: rectangleWidth)
-                HStack {
-                    // 日付
-                    VStack( alignment: .trailing, spacing: 0) {
-                        switch dateElement {
-                        case .year:
-                            if startTime == endTime {
-                                Text("\(startTime)")
-                            } else {
-                                /*
-                                 VStack( alignment: .leading, spacing: 0) {
-                                 Text("\(startTime)")
-                                 .padding(EdgeInsets(top: 0, leading: padding, bottom: 0, trailing: padding))
-                                 HStack {
-                                 Spacer()
-                                 Image(systemName: "triangle.fill")
-                                 .resizable()
-                                 .frame(width: triangleSize, height: triangleSize)
-                                 .rotationEffect(Angle(degrees: 90))
-                                 .opacity(0.8)
-                                 Text("\(endTime)")
-                                 }
-                                 }
-                                 */
-                                
-                                Spacer()
-                                Text(startTime)
-                                Text(endTime)
-                                Spacer()
-                            }
-                        case .month, .week:
-                            if startTime == endTime {
-                                Text("\(startTime)")
-                            } else {
-                                HStack {
-                                    Text("\(startTime)")
-                                    Image(systemName: "triangle.fill")
-                                        .resizable()
-                                        .frame(width: triangleSize, height: triangleSize)
-                                        .rotationEffect(Angle(degrees: 90))
-                                        .opacity(0.8)
-                                    Text("\(endTime)")
-                                }
-                            }
-                        default:
-                            if isAllDayStart && isAllDayend {
-                                Text("終日")
-                            } else {
-                                Spacer()
-                                Text(startTime)
-                                Text(endTime)
-                                Spacer()
-                            }
-                        }
+            let width: CGFloat = geometry.size.width
+            Path { path in
+                path.move(
+                    to: CGPoint(
+                        x: width * parameters.Segments[1].curve.x,
+                        y: width * parameters.Segments[1].curve.y))
+                parameters.Segments.forEach { segment in
+                    let isStart: Bool = segment.line.x != 0
+                    path.addLine(
+                        to: CGPoint(x: width * segment.line.x,
+                                    y: width * segment.line.y))
+                    if (isStart && isAllDayStart) || (!isStart && isAllDayend) {
+                        path.addLine(
+                            to: CGPoint(x: width * segment.curve.x,
+                                        y: width * segment.curve.y))
+                    } else {
+                        path.addArc(center: CGPoint(x: width * segment.controll.x,
+                                                    y: width * segment.controll.y),
+                                    radius: width / 2.0,
+                                    startAngle: Angle(degrees: isStart ? 0 : 180),
+                                    endAngle: Angle(degrees: isStart ? 180 : 360),
+                                    clockwise: true)
                     }
-                    .font(.system(size: 15))
-                    .frame(width: timeWidth)
-                    
-                    VStack(alignment: .leading, spacing: 0) {
-                        Spacer()
-                        // 場所
-                        if let location = ekEvent.location {
-                            HStack {
-                                Image("location_on")
-                                    .resizable()
-                                    .frame(width: locationSize * 0.8, height: locationSize)
-                                    .foregroundColor(.blue)
-                                Text("\(location)")
-                                    .font(.system(size: 13))
-                            }
-                        } else {
-                            Text(" ")
-                                .font(.system(size: 13))
-                        }
-                        Spacer()
-                            .frame(height: centerSpace)
-                        // タイトル
-                        Text("\(ekEvent.title)")
-                            .font(.system(size: 17, weight: .bold))
-                        Spacer()
-                    }
-                    .frame(width: titleWidth, alignment: .leading)
                 }
-                .background()
-                .onTapGesture {
-                    showEventSheet.toggle()
-                }
-                
-                Menu {
-                    Button {
-                        infoSelection = .copy
-                    } label: {
-                        Text("イベントを複製").tag(infoElements.copy)
-                    }
-                    Divider()
-                    if ekEvent.location != nil {
-                        Button {
-                            infoSelection = .location
-                        } label: {
-                            Text("マップを表示").tag(infoElements.location)
-                        }
-                    }
-                    if ekEvent.url != nil {
-                        Button {
-                            infoSelection = .url
-                        } label: {
-                            Text("ブラウザを表示").tag(infoElements.url)
-                        }
-                    }
-                    Divider()
-                    Button(role: .destructive) {
-                        infoSelection = .delete
-                    } label: {
-                        Label("消去", systemImage: "trash")
-                            .foregroundColor(.red)
-                    }
-                } label: {
-                    Image(systemName: "info.circle")
-                        .resizable()
-                        .frame(width: infoCircleSize, height: infoCircleSize)
-                        .foregroundColor(.red.opacity(0.8))
-                        .padding(padding)
-                }
-                .menuOrder(.fixed)
             }
-            .lineLimit(1)
-            .sheet(isPresented: $showEventSheet) {
-                Text("\(ekEvent)")
-            }
+            .fill(color)
         }
     }
+}
+struct EventSealLongParameters {
+    struct Segment {
+        let line: CGPoint
+        let curve: CGPoint
+        let controll: CGPoint
+    }
     
-    enum infoElements: String, CaseIterable {
-        case copy = "イベントを複製"
-        case location = "マップを表示"
-        case url = "ブラウザを表示"
-        case delete = "消去"
+    let Segments: [Segment]
+    
+    init(start: Bool, end: Bool) {
+        let width: CGFloat = 1
+        let height: CGFloat = 3.5
+        let center: CGFloat = width / 2.0
+        let topY: CGFloat = start ? 0 : center
+        let bottomY: CGFloat = end ? height : height - center
+        Segments = [
+            Segment(
+                line: CGPoint(x: width, y: topY),
+                curve: CGPoint(x: 0, y: topY),
+                controll: CGPoint(x: center, y: center)),
+            Segment(
+                line: CGPoint(x: 0, y: bottomY),
+                curve: CGPoint(x: width, y: bottomY),
+                controll: CGPoint(x: center, y: height - center))
+        ]
     }
 }
 
- class EventSheetObject: ObservableObject {
- @Published var showEventSheet: Bool = false
- @Published var
- }
- */
-
 #Preview {
-    EventList([createEvent(day: 1), createEvent(day: 2), createEvent(day: 3), createEvent(day: 4),createEvent(day: 5), createEvent(day: 6), createEvent(day: 7), createEvent(day: 8)], target: Date())
+    EventList([createEvent(day: 24), createEvent(day: 24), createEvent(day: 24), createEvent(day: 24), createEvent(day: 17)], target: Date())
+        .environmentObject(CustomColor(foreGround: .black, backGround: .white))
 }

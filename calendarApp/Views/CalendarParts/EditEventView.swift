@@ -285,6 +285,9 @@ struct DateTimeSelect: View {
     let width: CGFloat
     let radius: CGFloat = 5
     let linewidth: CGFloat = 2
+    var minuteToMultiple5: Int {
+        (dayDateObj.getMinute(date) / 5) * 5
+    }
     
     init (startOrEnd: Int, date: Binding<Date>, width: CGFloat, isShownTabCalendar: Binding<Bool>) {
         if startOrEnd == 0 {
@@ -351,7 +354,7 @@ struct DateTimeSelect: View {
                     isShownTabCalendar = false
                 }
             } label: {
-                Text(!eventData.isAllDay ? dateFormatterTime.string(from: date) : "")
+                Text(!eventData.isAllDay ? "\(dayDateObj.getHour(date)):\(String(format: "%02d", minuteToMultiple5))" : "")
                     .fontWeight(.bold)
                     .frame(width: abs((width / 2) - 15) * 0.3)
             }
@@ -377,7 +380,7 @@ struct DateTimeSelect: View {
             if !eventData.isAllDay {
                 if #available(iOS 17.0, *) {
                     selectHour(date: $date)
-                    selectMinute(date: $date)
+                    selectMinute(date: $date, iniVlue: minuteToMultiple5)
                 } else {
                     HStack {
                         Picker("時間選択", selection: $hour) {
@@ -619,10 +622,9 @@ struct selectMinute: View {
     @Binding var date: Date
     @State private var index: Int
     let diff: Int = 5
-    init(date: Binding<Date>) {
+    init(date: Binding<Date>, iniVlue: Int) {
         self._date = date
-        let min = DateObject().calendar.component(.minute, from: date.wrappedValue)
-        self._index = State(initialValue: min)
+        self._index = State(initialValue: iniVlue)
     }
     var body: some View {
         HorizontalWheelPicker(initialCenterItem: index, numItem: 9, items: createMinuteArray(diff: diff)) { index in
