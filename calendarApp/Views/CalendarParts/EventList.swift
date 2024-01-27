@@ -293,7 +293,6 @@ struct EventSealLong: View {
             }
         }
     }
-    
     struct BrowsOrRemoveOrMap: View {
         @EnvironmentObject private var customColor: CustomColor
         var ekEvent: EKEvent
@@ -310,7 +309,11 @@ struct EventSealLong: View {
             NavigationStack {
                 switch infoSelection {
                 case .location:
-                    MapSheet(address: ekEvent.location!, showInfo: $showInfo)
+                    if #available(iOS 17, *) {
+                        MapSheet17A(address: ekEvent.location!, showInfo: $showInfo)
+                    } else {
+                        MapSheet17B(address: ekEvent.location!, showInfo: $showInfo)
+                    }
                 case .url:
                     BrowsSheet()
                 case .remove:
@@ -327,34 +330,39 @@ struct EventSealLong: View {
         }
     }
     
-    struct MapSheet: View {
+    @available(iOS 17.0, *)
+    struct MapSheet17A: View {
         @EnvironmentObject private var customColor: CustomColor
         let address: String
+        @State private var cameraPosition: MapCameraPosition = MapCameraPosition.region(MKCoordinateRegion())
         @State private var coordinate: CLLocationCoordinate2D?
-        @State private var region: MKCoordinateRegion = MKCoordinateRegion()
         @Binding var showInfo: Bool
+        
+        let span: Double = 0.02
+        let coordinateSpan: MKCoordinateSpan
+        
+        init(address: String, showInfo: Binding<Bool>) {
+            self.address = address
+            self._showInfo = showInfo
+            self.coordinateSpan = MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
+        }
         
         var body: some View {
             VStack {
-                if #available(iOS 17.0, *) {
-                    Map {
-                        if let coordinate = self.coordinate {
-                                Marker(address, coordinate: coordinate)
-                                    .tint(.orange)
-                        }
-                        
+                Map(position: $cameraPosition) {
+                    if let coordinate = self.coordinate {
+                        Marker(address, coordinate: coordinate)
+                            .tint(.orange)
                     }
-                    .mapControlVisibility(.hidden)
-                    .onAppear {
-                        setCoordinate(address) { location in
-                            self.coordinate = CLLocationCoordinate2D(latitude: location[0], longitude: location[1])
-                        }
+                }
+                .mapControls {
+                    MapPitchToggle()
+                }
+                .task {
+                    setCoordinate(address) { location in
+                        self.cameraPosition = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: location[0], longitude: location[1]), span: coordinateSpan))
+                        self.coordinate = CLLocationCoordinate2D(latitude: location[0], longitude: location[1])
                     }
-                } else {
-                    Map(coordinateRegion: $region)
-                        .onAppear {
-                            setRegion()
-                        }
                 }
             }
             .toolbar {
@@ -379,16 +387,65 @@ struct EventSealLong: View {
                 guard error == nil,
                       let latitude = placemarks?.first?.location?.coordinate.latitude,
                       let longitude = placemarks?.first?.location?.coordinate.longitude else { return }
-                print("DEBUG: latitude : \(latitude)")
-                print("DEBUG: logitude : \(longitude)")
                 set([latitude, longitude])
             }
         }
+    }
+    
+    struct MapSheet17B: View {
+        @EnvironmentObject private var customColor: CustomColor
+        let address: String
+        @State private var coordinate: CLLocationCoordinate2D?
+        @State private var region: MKCoordinateRegion = MKCoordinateRegion()
+        @Binding var showInfo: Bool
         
+        let span: Double = 0.02
+        let coordinateSpan: MKCoordinateSpan
+        
+        init(address: String, showInfo: Binding<Bool>) {
+            self.address = address
+            self._showInfo = showInfo
+            self.coordinateSpan = MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
+        }
+        
+        var body: some View {
+            VStack {
+                Map(coordinateRegion: $region)
+                .task {
+                    setRegion()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showInfo.toggle()
+                    } label: {
+                        Image(systemName: "multiply")
+                            .foregroundStyle(customColor.foreGround)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text(address)
+                        .foregroundStyle(customColor.foreGround)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
         
         private func setRegion() {
-            guard let coordinate = coordinate else { return }
-            region = MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2))
+            setCoordinate { coordinate in
+                self.coordinate = coordinate
+                self.region = MKCoordinateRegion(center: coordinate, span: coordinateSpan)
+            }
+        }
+        
+        private func setCoordinate(_ set:@escaping ((CLLocationCoordinate2D) -> Void)){
+            CLGeocoder().geocodeAddressString(address) { placemarks, error in
+                guard error == nil,
+                      let latitude = placemarks?.first?.location?.coordinate.latitude,
+                      let longitude = placemarks?.first?.location?.coordinate.longitude else { return }
+                set(CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+            }
         }
     }
     
@@ -565,6 +622,6 @@ struct EventSealLongParameters {
 }
 
 #Preview {
-    EventList([createEvent(day: 24), createEvent(day: 24), createEvent(day: 24), createEvent(day: 24), createEvent(day: 17)], target: Date())
+    EventList([createEvent(day: 27), createEvent(day: 27), createEvent(day: 27), createEvent(day: 27), createEvent(day: 27)], target: Date())
         .environmentObject(CustomColor(foreGround: .black, backGround: .white))
 }
