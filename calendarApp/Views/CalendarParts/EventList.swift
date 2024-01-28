@@ -309,15 +309,11 @@ struct EventSealLong: View {
             NavigationStack {
                 switch infoSelection {
                 case .location:
-                    if #available(iOS 17, *) {
-                        MapSheet17A(address: ekEvent.location!, showInfo: $showInfo)
-                    } else {
-                        MapSheet17B(address: ekEvent.location!, showInfo: $showInfo)
-                    }
+                    MapView(address: ekEvent.location!, showInfo: $showInfo)
                 case .url:
-                    BrowsSheet()
+                    WebViewCustom(url: ekEvent.url!, showInfo: $showInfo)
                 case .remove:
-                    RemoveSheet(ekEvent: ekEvent, showInfo: $showInfo)
+                    RemoveView(ekEvent: ekEvent, showInfo: $showInfo)
                 default:
                     Text("")
                         .onAppear {
@@ -327,217 +323,6 @@ struct EventSealLong: View {
             }
             .presentationDetents(infoSelection == .remove  ? [.height(ekEvent.hasRecurrenceRules ? 170 : 120)]: [.large])
             .presentationBackground(.thinMaterial)
-        }
-    }
-    
-    @available(iOS 17.0, *)
-    struct MapSheet17A: View {
-        @EnvironmentObject private var customColor: CustomColor
-        let address: String
-        @State private var cameraPosition: MapCameraPosition = MapCameraPosition.region(MKCoordinateRegion())
-        @State private var coordinate: CLLocationCoordinate2D?
-        @Binding var showInfo: Bool
-        
-        let span: Double = 0.02
-        let coordinateSpan: MKCoordinateSpan
-        
-        init(address: String, showInfo: Binding<Bool>) {
-            self.address = address
-            self._showInfo = showInfo
-            self.coordinateSpan = MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
-        }
-        
-        var body: some View {
-            VStack {
-                Map(position: $cameraPosition) {
-                    if let coordinate = self.coordinate {
-                        Marker(address, coordinate: coordinate)
-                            .tint(.orange)
-                    }
-                }
-                .mapControls {
-                    MapPitchToggle()
-                }
-                .task {
-                    setCoordinate(address) { location in
-                        self.cameraPosition = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: location[0], longitude: location[1]), span: coordinateSpan))
-                        self.coordinate = CLLocationCoordinate2D(latitude: location[0], longitude: location[1])
-                    }
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showInfo.toggle()
-                    } label: {
-                        Image(systemName: "multiply")
-                            .foregroundStyle(customColor.foreGround)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text(address)
-                        .foregroundStyle(customColor.foreGround)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        
-        private func setCoordinate(_ address: String, _ set:@escaping ([CLLocationDegrees]) -> Void) {
-            CLGeocoder().geocodeAddressString(address) { placemarks, error in
-                guard error == nil,
-                      let latitude = placemarks?.first?.location?.coordinate.latitude,
-                      let longitude = placemarks?.first?.location?.coordinate.longitude else { return }
-                set([latitude, longitude])
-            }
-        }
-    }
-    
-    struct MapSheet17B: View {
-        @EnvironmentObject private var customColor: CustomColor
-        let address: String
-        @State private var coordinate: CLLocationCoordinate2D?
-        @State private var region: MKCoordinateRegion = MKCoordinateRegion()
-        @Binding var showInfo: Bool
-        
-        let span: Double = 0.02
-        let coordinateSpan: MKCoordinateSpan
-        
-        init(address: String, showInfo: Binding<Bool>) {
-            self.address = address
-            self._showInfo = showInfo
-            self.coordinateSpan = MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
-        }
-        
-        var body: some View {
-            VStack {
-                Map(coordinateRegion: $region)
-                .task {
-                    setRegion()
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showInfo.toggle()
-                    } label: {
-                        Image(systemName: "multiply")
-                            .foregroundStyle(customColor.foreGround)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text(address)
-                        .foregroundStyle(customColor.foreGround)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        
-        private func setRegion() {
-            setCoordinate { coordinate in
-                self.coordinate = coordinate
-                self.region = MKCoordinateRegion(center: coordinate, span: coordinateSpan)
-            }
-        }
-        
-        private func setCoordinate(_ set:@escaping ((CLLocationCoordinate2D) -> Void)){
-            CLGeocoder().geocodeAddressString(address) { placemarks, error in
-                guard error == nil,
-                      let latitude = placemarks?.first?.location?.coordinate.latitude,
-                      let longitude = placemarks?.first?.location?.coordinate.longitude else { return }
-                set(CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
-            }
-        }
-    }
-    
-    struct BrowsSheet: View {
-        var body: some View {
-            Text("browser")
-        }
-    }
-    
-    struct RemoveSheet: View {
-        @EnvironmentObject var customColor: CustomColor
-        @EnvironmentObject var eventData: EventData
-        var ekEvent: EKEvent
-        @Binding var showInfo: Bool
-        
-        var body: some View {
-            GeometryReader { geometry in
-                let width = geometry.size.width
-                VStack {
-                    VStack(spacing: 5){
-                        HStack {
-                            Image(systemName: "delete.left.fill")
-                                .resizable()
-                                .frame(width: 22, height: 17)
-                                .fontWeight(.bold)
-                            Spacer()
-                            Text("このイベント")
-                                .font(.system(size: 17))
-                            Spacer()
-                        }
-                        .frame(width: width / 1.5, height: 25, alignment: .center)
-                        .padding(10)
-                        .background(.gray.opacity(0.3))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .padding(5)
-                        .onTapGesture {
-                            showInfo.toggle()
-                            let isDelete = eventData.eventController.removeEvent(ekEvent: ekEvent, span: .thisEvent)
-                            if isDelete {
-                                //成否のメッセージ
-                                
-                                eventData.selectedEventDate = eventData.selectedEventDate
-                                if let eventDate = eventData.selectedEventDate {
-                                    let selectedDatesEvent = eventData.eventController.getEvents(date: eventDate)
-                                    if selectedDatesEvent.count == 0 {
-                                        eventData.showEvents.toggle()
-                                    }
-                                }
-                            }
-                            
-                        }
-                        if ekEvent.hasRecurrenceRules {
-                            HStack {
-                                Image("tab_close")
-                                    .resizable()
-                                    .frame(width: 22, height: 18)
-                                    .fontWeight(.light)
-                                Spacer()
-                                Text("これ以降すべて")
-                                    .font(.system(size: 17))
-                                Spacer()
-                            }
-                            .frame(width: width / 1.5, height: 20, alignment: .center)
-                            .padding(10)
-                            .background(.gray.opacity(0.3))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .padding(5)
-                            .onTapGesture {
-                                showInfo.toggle()
-                                eventData.eventController.removeEvent(ekEvent: ekEvent, span: .futureEvents)
-                            }
-                        }
-                    }
-                    .foregroundStyle(customColor.foreGround)
-                }
-                .frame(width: width)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            showInfo.toggle()
-                        } label: {
-                            Image(systemName: "multiply")
-                                .foregroundStyle(customColor.foreGround)
-                        }
-                    }
-                    ToolbarItem(placement: .principal) {
-                        Text("消去")
-                            .foregroundStyle(customColor.foreGround)
-                    }
-                }
-                .navigationBarTitleDisplayMode(.inline)
-            }
         }
     }
     
@@ -622,6 +407,6 @@ struct EventSealLongParameters {
 }
 
 #Preview {
-    EventList([createEvent(day: 27), createEvent(day: 27), createEvent(day: 27), createEvent(day: 27), createEvent(day: 27)], target: Date())
+    EventList([createEvent(day: 28), createEvent(day: 28), createEvent(day: 28), createEvent(day: 27), createEvent(day: 27)], target: Date())
         .environmentObject(CustomColor(foreGround: .black, backGround: .white))
 }
