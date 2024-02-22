@@ -485,7 +485,7 @@ struct selectDate: View {
             day: dateObj.getDay(dateObj.viewDate)))!
         let itemWidth = width / 7
         let rowMonth = 6
-        let infoMonth = getInfoMonth(date: viewDate)
+        let infoMonth = InfoMonth(date: viewDate)
         
         VStack {
             // 週

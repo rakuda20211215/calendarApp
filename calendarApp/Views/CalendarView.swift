@@ -97,6 +97,11 @@ struct CalendarView: View {
                         
                         Button{
                             //kari -----
+                            if let gUrl = URL(string: "comgooglemaps://")
+                                ,UIApplication.shared.canOpenURL(gUrl) {
+                                print(UIApplication.shared.canOpenURL(gUrl))
+                                UIApplication.shared.open(gUrl)
+                            }
                             eventData.selectedEventDate = nil
                             
                         } label: {
@@ -113,14 +118,13 @@ struct CalendarView: View {
                         // カレンダー
                         VStack(spacing: 0) {
                             TabView(selection: $selection) {
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, showEvents: $eventData.showEvents)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, contentHeight: CONTENT_HEIGHT - padding)
                                     .frame(width: CALENDAR_WIDTH)
                                     .tag(-1)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, showEvents: $eventData.showEvents)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, contentHeight: CONTENT_HEIGHT - padding)
                                     .frame(width: CALENDAR_WIDTH)
                                     .onDisappear() {
-                                        
                                         if selection != 0 {
                                             dateObj.updateDateObj(selection: selection)
                                             selection = 0
@@ -128,7 +132,7 @@ struct CalendarView: View {
                                     }
                                     .tag(0)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, showEvents: $eventData.showEvents)
+                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, contentHeight: CONTENT_HEIGHT - padding)
                                     .frame(width: CALENDAR_WIDTH)
                                     .tag(1)
                             }

@@ -67,7 +67,7 @@ struct RecurrenceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var recurrenceRuleObj: RecurrenceRuleObj
     @EnvironmentObject private var customColor: CustomColor
-    let weeks = getInfoMonth(date: Date()).getWeek()
+    let weeks = InfoMonth(date: Date()).getWeek()
 
     
     var body: some View {
@@ -447,7 +447,7 @@ class RecurrenceRuleObj: ObservableObject {
         case .weekly:
             var weekStr = ""
             guard daysWeekToInt.first != -1 else { return "weekStr" }
-            let weeksLong = daysWeekToInt.sorted(by: { $0 < $1 }).map({ getInfoMonth(date: Date()).getWeek()[$0 - 1] })
+            let weeksLong = daysWeekToInt.sorted(by: { $0 < $1 }).map({ InfoMonth(date: Date()).getWeek()[$0 - 1] })
             for week in weeksLong {
                 weekStr = "\(weekStr)\(weeksLong.firstIndex(of: week) == 0 ? " " : "、")\(week)曜日"
             }

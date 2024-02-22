@@ -11,29 +11,28 @@ import EventKit
 
 struct MonthCalendar: View {
     @ObservedObject var eventData: EventData
+    @ObservedObject private var dateObj: DateObject = DateObject()
     @Binding var selectedEventDate: Date?
     
     var startWeek: String
-    let NUMWEEK = 7
-    let NUMROWMONTH = 6
     let YEAR: Int
     let MONTH: Int
-    let infoMonth: getInfoMonth
+    let infoMonth: InfoMonth
     let week: [String]
     
-    // 日付に所属するイベント一覧有効化
-    @Binding private var showEvents: Bool
+    let maxCalendarHeight: CGFloat
     
-    init(YEAR: Int, MONTH: Int, eventData: EventData, selectedEventDate: Binding<Date?>, showEvents: Binding<Bool>) {
+    init(YEAR: Int, MONTH: Int, eventData: EventData, selectedEventDate: Binding<Date?>, contentHeight: CGFloat) {
         self.YEAR = YEAR
         self.MONTH = MONTH
-        self.infoMonth = getInfoMonth(year: YEAR, month: MONTH)
+        self.infoMonth = InfoMonth(year: YEAR, month: MONTH)
         self.week = infoMonth.getWeek()
         self.startWeek = self.week[0]
         self.eventData = eventData
         
+        self.maxCalendarHeight = contentHeight
+        
         self._selectedEventDate = selectedEventDate
-        self._showEvents = showEvents
     }
     
     let LINE_COLOR = Color.gray.opacity(0.5)
@@ -45,28 +44,21 @@ struct MonthCalendar: View {
         // イベント取得
         
         GeometryReader { geometry in
-            let width = geometry.size.width
-            let height = geometry.size.height
-            let HEIGHT_WEEK: CGFloat = 20
-            let WIDTH_DATE: CGFloat = width /  CGFloat(NUMWEEK)
-            let HEIGHT_DATE: CGFloat = 12
-            let HEIGHT_ROW_MONTH: CGFloat = (height - HEIGHT_WEEK - 6) / CGFloat(NUMROWMONTH)
-            let HEIGHT_EVENT: CGFloat = 19
-            let HEIGHT_EVENT_SPACE = HEIGHT_ROW_MONTH - HEIGHT_DATE
-            let ROW_EVENTS: Int = Int((HEIGHT_ROW_MONTH - 10) / HEIGHT_EVENT) - 1
+            let objectSizes: ObjectSizes = ObjectSizes(width: geometry.size.width, height: geometry.size.height, maxCalendarHeight: maxCalendarHeight, showEvents: eventData.showEvents)
             
             ZStack(alignment: .topLeading) {
                 let ekEvents = eventData.eventController.getEvents(year: YEAR, month: MONTH)
+                let ekEventsFloorMap = getEventsFloorMap(ekEvents: ekEvents)
+                
                 if !ekEvents.isEmpty {
                     ForEach(ekEvents, id: \.self) { ekEvent in
-                        EventSeal(ekEvent: ekEvent, showEvents: showEvents,
-                                  countEvents: createEventsArray(range: infoMonth.rangeMonth, rowEvents: ROW_EVENTS),
-                                  WIDTH_DATE: WIDTH_DATE, HEIGHT_DATE: HEIGHT_DATE,
-                                  HEIGHT_EVENT: HEIGHT_EVENT,
-                                  HEIGHT_EVENT_SPACE: HEIGHT_EVENT_SPACE,
-                                  CARRYOVER: CARRYOVER)
-                            .padding(EdgeInsets(top: HEIGHT_WEEK, leading: 0, bottom: 0, trailing: 0))
-                        
+                        if let floor = ekEventsFloorMap[ekEvent],
+                            floor < objectSizes.ROW_EVENTS {
+                            EventSeal(ekEvent: ekEvent, floor: floor, showEvents: $eventData.showEvents,
+                                      objectSizes: objectSizes,
+                                      CARRYOVER: CARRYOVER)
+                            .padding(EdgeInsets(top: objectSizes.HEIGHT_WEEKCHAR, leading: 0, bottom: 0, trailing: 0))
+                        }
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
@@ -75,21 +67,21 @@ struct MonthCalendar: View {
                         ForEach(0..<7, id: \.self) { index in
                             Text(customWeek[index])
                                 .foregroundStyle(.black)
-                                .frame(width: WIDTH_DATE,height: HEIGHT_WEEK)
+                                .frame(width: objectSizes.WIDTH_DATE,height: objectSizes.HEIGHT_WEEKCHAR)
                                 .font(.system(size: 10))
                         }
                     }
                     
                     //　日付と仕切り線
-                    ForEach(0..<NUMROWMONTH, id: \.self) { rowIndex in
+                    ForEach(0..<objectSizes.NUMROWMONTH, id: \.self) { rowIndex in
                         
                         //仕切りの線
                         Rectangle()
                             .fill(LINE_COLOR)
-                            .frame(width: width, height: 1)
+                            .frame(width: objectSizes.WIDTH, height: 1)
                         
                         HStack(spacing: 0) {
-                            ForEach(0..<NUMWEEK, id: \.self) { columnIndex in
+                            ForEach(0..<objectSizes.NUMWEEK, id: \.self) { columnIndex in
                                 VStack(spacing: 0) {
                                     let day: Int = infoMonth.getDay(rowIndex, columnIndex, CARRYOVER)
                                     let dateComp: DateComponents = DateComponents(year: YEAR, month: MONTH, day: day)
@@ -98,33 +90,33 @@ struct MonthCalendar: View {
                                         Button {
                                             if !eventData.eventController.getEvents(date: thisDate).isEmpty {
                                                 selectedEventDate = thisDate
-                                                showEvents = true
+                                                eventData.showEvents = true
                                             }
                                         } label: {
                                             //日付
                                             VStack {
                                                 Text(infoMonth.getDay(rowIndex, columnIndex, CARRYOVER).description)
                                                     .foregroundStyle(.black)
-                                                    .frame(width: WIDTH_DATE, height: HEIGHT_DATE, alignment: .center)
+                                                    .frame(width: objectSizes.WIDTH_DATE, height: objectSizes.HEIGHT_DATE, alignment: .center)
                                                     .font(.system(size: 10))
-                                                    .frame(width: WIDTH_DATE)
+                                                    .frame(width: objectSizes.WIDTH_DATE)
                                             }
-                                            .frame(height: HEIGHT_ROW_MONTH, alignment: .top)
+                                            .frame(height: objectSizes.HEIGHT_ROW_MONTH, alignment: .top)
                                         }
                                         
                                     } else {
                                         Text("")
-                                            .frame(width: WIDTH_DATE, height: HEIGHT_DATE)
+                                            .frame(width: objectSizes.WIDTH_DATE, height: objectSizes.HEIGHT_DATE)
                                     }
                                 }
                             }
                         }
-                        .frame(height: HEIGHT_ROW_MONTH, alignment: .top)
+                        .frame(height: objectSizes.HEIGHT_ROW_MONTH, alignment: .top)
                     }
                 }
             }
-                .background(.white)
-                .cornerRadius(5)
+            .background(.white)
+            .cornerRadius(5)
         }
     }
     
@@ -138,20 +130,84 @@ struct MonthCalendar: View {
         return w
     }
     
-    func createEventsArray(range: Range<Int>, rowEvents: Int) -> [[Int]] {
-        var row: [Int] = []
-        for _ in 0..<rowEvents {
-            row.append(0)
+    func getEventsFloorMap(ekEvents: [EKEvent]) -> [EKEvent: Int] {
+        var eventsFloorMap = [EKEvent: Int]()
+        for ekEvent in ekEvents {
+            let targetStartDay = dateObj.getDay(ekEvent.startDate)
+            let targetEventFloors = eventsFloorMap.filter { e, f in
+                let loopEndday = dateObj.getDay(e.endDate)
+                if targetStartDay <= loopEndday {
+                    return true
+                }
+                return false
+            }.map { _, f in
+                return f
+            }.sorted {
+                $0 < $1
+            }
+            
+            var floor = 0
+            for (i, f) in zip(targetEventFloors.indices, targetEventFloors) {
+                if i != f {
+                    floor = i
+                    break
+                }
+                floor = i + 1
+            }
+            eventsFloorMap[ekEvent] = floor
         }
-        
-        var countEvents: [[Int]] = []
-        for _ in range {
-            countEvents.append(row)
-        }
-        
-        return countEvents
+        return eventsFloorMap
     }
-
+    
+    class ObjectSizes: ObjectSizesCollection {
+        let WIDTH: CGFloat
+        let HEIGHT: CGFloat
+        let HEIGHT_WEEKCHAR: CGFloat
+        let WIDTH_DATE: CGFloat
+        let HEIGHT_DATE: CGFloat
+        let HEIGHT_ROW_MONTH: CGFloat
+        let WIDTH_EVENT: CGFloat
+        var HEIGHT_EVENT: CGFloat
+        let HEIGHT_EVENT_AREA: CGFloat
+        let HEIGHT_EVENT_RECTANGLE: CGFloat
+        let WIDTH_EVENT_TITLE: CGFloat
+        let ROW_EVENTS: Int
+        
+        let NUMWEEK = 7
+        let NUMROWMONTH = 6
+        init(width: CGFloat, height: CGFloat, maxCalendarHeight: CGFloat, showEvents: Bool) {
+            WIDTH = width
+            HEIGHT = height
+            HEIGHT_WEEKCHAR = 20
+            WIDTH_DATE = WIDTH /  CGFloat(NUMWEEK)
+            HEIGHT_DATE = 12
+            HEIGHT_ROW_MONTH = (HEIGHT - HEIGHT_WEEKCHAR - CGFloat(NUMROWMONTH)) / CGFloat(NUMROWMONTH)
+            let maxHeightRowMonth = floor((maxCalendarHeight - HEIGHT_WEEKCHAR - CGFloat(NUMROWMONTH)) / CGFloat(NUMROWMONTH))
+            WIDTH_EVENT = WIDTH_DATE - 2
+            ROW_EVENTS = Int(maxHeightRowMonth / 19)
+            HEIGHT_EVENT_AREA = HEIGHT_ROW_MONTH - HEIGHT_DATE
+            HEIGHT_EVENT = HEIGHT_EVENT_AREA / CGFloat(ROW_EVENTS)
+            HEIGHT_EVENT_RECTANGLE = 3
+            WIDTH_EVENT_TITLE = WIDTH_DATE - 8
+        }
+    }
+}
+protocol ObjectSizesCollection {
+    var WIDTH: CGFloat { get }
+    var HEIGHT: CGFloat { get }
+    var HEIGHT_WEEKCHAR: CGFloat { get }
+    var WIDTH_DATE: CGFloat { get }
+    var HEIGHT_DATE: CGFloat { get }
+    var HEIGHT_ROW_MONTH: CGFloat { get }
+    var WIDTH_EVENT: CGFloat { get }
+    var HEIGHT_EVENT: CGFloat { get }
+    var HEIGHT_EVENT_AREA: CGFloat { get }
+    var HEIGHT_EVENT_RECTANGLE: CGFloat { get }
+    var WIDTH_EVENT_TITLE: CGFloat { get }
+    var ROW_EVENTS: Int { get }
+    
+    var NUMWEEK: Int { get }
+    var NUMROWMONTH: Int { get }
 }
 
 func createEvent(day: Int) -> EKEvent {
@@ -177,7 +233,7 @@ func createEvent(day: Int) -> EKEvent {
     return ekEvent
 }
 
-class getInfoMonth {
+class InfoMonth {
     init(year: Int, month: Int) {
         let calendar = Calendar.current
         let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: 1)
@@ -218,6 +274,6 @@ class getInfoMonth {
 
 struct MonthCalendar_Previews: PreviewProvider {
     static var previews: some View {
-        MonthCalendar(YEAR: 2023, MONTH: 11, eventData: EventData(), selectedEventDate: Binding.constant(Date()), showEvents: Binding.constant(false))
+        MonthCalendar(YEAR: 2023, MONTH: 11, eventData: EventData(), selectedEventDate: Binding.constant(Date()), contentHeight: 400)
     }
 }

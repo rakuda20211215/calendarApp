@@ -29,6 +29,11 @@ struct WebViewCustom: View {
     let url: URL
     @Binding var showInfo: Bool
     
+    init(url: URL, showInfo: Binding<Bool>) {
+        self.url = url
+        self._showInfo = showInfo
+    }
+    
     let backSize: CGFloat = 15
     let safariSize: CGFloat = 20
     
