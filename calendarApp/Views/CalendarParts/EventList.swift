@@ -23,8 +23,7 @@ struct EventList: View {
         self.endDate = end
         self.targetDate = nil
         
-        let dateObj: DateObject = DateObject()
-        if dateObj.getMonth(start) != dateObj.getMonth(end) {
+        if CalendarDateComponent.getMonth(start) != CalendarDateComponent.getMonth(end) {
             isOverMonth = true
         } else {
             isOverMonth = false
@@ -36,14 +35,13 @@ struct EventList: View {
     
     init(_ ekEvents: [EKEvent], target: Date) {
         self.targetDate = target
-        let dateObj: DateObject = DateObject()
         
-        let startDateComp = DateComponents(calendar: dateObj.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: dateObj.getYear(target), month: dateObj.getMonth(target), day: dateObj.getDay(target), hour: 0, minute: 0, second: 0)
-        let start = dateObj.calendar.date(from: startDateComp)!
+        let startDateComp = DateComponents(calendar: CalendarDateComponent.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: CalendarDateComponent.getYear(target), month: CalendarDateComponent.getMonth(target), day: CalendarDateComponent.getDay(target), hour: 0, minute: 0, second: 0)
+        let start = CalendarDateComponent.calendar.date(from: startDateComp)!
         self.startDate = start
         
-        let endDateComp = DateComponents(calendar: dateObj.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: dateObj.getYear(target), month: dateObj.getMonth(target), day: dateObj.getDay(target), hour: 23, minute: 59, second: 59)
-        let end = dateObj.calendar.date(from: endDateComp)!
+        let endDateComp = DateComponents(calendar: CalendarDateComponent.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: CalendarDateComponent.getYear(target), month: CalendarDateComponent.getMonth(target), day: CalendarDateComponent.getDay(target), hour: 23, minute: 59, second: 59)
+        let end = CalendarDateComponent.calendar.date(from: endDateComp)!
         self.endDate = end
         
         self.ekEvents = ekEvents

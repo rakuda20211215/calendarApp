@@ -10,7 +10,8 @@ import EventKit
 
 struct RemoveView: View {
     @EnvironmentObject var customColor: CustomColor
-    @EnvironmentObject var eventData: EventData
+    @EnvironmentObject var eventViewController: EventViewController
+    //@EnvironmentObject var eventData: EventData
     var ekEvent: EKEvent
     @Binding var showInfo: Bool
     
@@ -29,23 +30,21 @@ struct RemoveView: View {
                             .font(.system(size: 17))
                         Spacer()
                     }
-                    .frame(width: width / 1.5, height: 25, alignment: .center)
+                    .frame(width: width * 0.7, height: 25, alignment: .center)
                     .padding(10)
                     .background(.gray.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(5)
                     .onTapGesture {
                         showInfo.toggle()
-                        let isDelete = eventData.eventController.removeEvent(ekEvent: ekEvent, span: .thisEvent)
+                        let isDelete = eventViewController.eventController.removeEvent(ekEvent: ekEvent, span: .thisEvent)
+                        //eventData.initializeObj()
                         if isDelete {
                             //成否のメッセージ
                             
-                            eventData.selectedEventDate = eventData.selectedEventDate
-                            if let eventDate = eventData.selectedEventDate {
-                                let selectedDatesEvent = eventData.eventController.getEvents(date: eventDate)
-                                if selectedDatesEvent.count == 0 {
-                                    eventData.showEvents.toggle()
-                                }
+                            eventViewController.updateSelectedDayEvents()
+                            if eventViewController.selectedDayEvents == nil {
+                                eventViewController.showEvents = false
                             }
                         }
                         
@@ -61,14 +60,18 @@ struct RemoveView: View {
                                 .font(.system(size: 17))
                             Spacer()
                         }
-                        .frame(width: width / 1.5, height: 20, alignment: .center)
+                        .frame(width: width * 0.7, height: 20, alignment: .center)
                         .padding(10)
                         .background(.gray.opacity(0.3))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .padding(5)
                         .onTapGesture {
                             showInfo.toggle()
-                            eventData.eventController.removeEvent(ekEvent: ekEvent, span: .futureEvents)
+                            let isDeleted = eventViewController.eventController.removeEvent(ekEvent: ekEvent, span: .futureEvents)
+                            eventViewController.updateSelectedDayEvents()
+                            if eventViewController.selectedDayEvents == nil {
+                                eventViewController.showEvents = false
+                            }
                         }
                     }
                 }

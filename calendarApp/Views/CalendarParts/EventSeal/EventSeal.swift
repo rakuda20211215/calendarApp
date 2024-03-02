@@ -10,55 +10,48 @@ import UIKit
 import EventKit
 
 struct EventSeal: View {
-    let ekEvent: EKEvent
-    let floor: Int
+    @EnvironmentObject var objectSizes: ObjectSizes
+    @EnvironmentObject var infoMonth: InfoMonth
+    
     @Binding var showEvents: Bool
-    let objectSizes: ObjectSizesCollection
-    let CARRYOVER: Int
-    let title: String
-    let color: CGColor
+    //let objectSizes: ObjectSizesCollection
+    let ekEvent: EKEvent
+    let step: Int
     
-    init(ekEvent: EKEvent, floor: Int, showEvents: Binding<Bool>, objectSizes: ObjectSizesCollection, CARRYOVER: Int) {
-        self.ekEvent = ekEvent
-        self.floor = floor
+    init(showEvents: Binding<Bool>, ekEvent: EKEvent, step: Int) {
         self._showEvents = showEvents
-        self.objectSizes = objectSizes
-        self.CARRYOVER = CARRYOVER
-        self.title = ekEvent.title == nil ? "no title" : ekEvent.title!
-        self.color = ekEvent.calendar.cgColor == nil ? CGColor(gray: 1, alpha: 1) : ekEvent.calendar.cgColor!
+        self.ekEvent = ekEvent
+        self.step = step
     }
     
-    var body: some View {
-        VStack(spacing: 0) {
-            if !showEvents {
-                Text(title)
-                    .kerning(0)
-                    .font(.system(size: 9,weight: .bold))
-                    .foregroundColor(.black)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(width: objectSizes.WIDTH_EVENT_TITLE, height: 9, alignment: .top)
-                    .clipped()
-                    .animation(.easeOut, value: showEvents)
+    var eventRangeInCalendar: ClosedRange<Int> {
+        var startIndex = 0
+        var endIndex = 0
+        
+        for (index, date) in zip(infoMonth.rangeMonth.indices, infoMonth.rangeMonth) {
+            if date <= ekEvent.startDate {
+                startIndex = index
             }
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(color))
-                .frame(height: objectSizes.HEIGHT_EVENT_RECTANGLE)
+            
+            if date <= ekEvent.endDate {
+                endIndex = index
+            } else {
+                break
+            }
         }
-        .frame(width: objectSizes.WIDTH_EVENT * CGFloat(numberOfEventDaysPerWeek[0]), height: objectSizes.HEIGHT_EVENT)
-        .padding(EdgeInsets(top: paddingTopLeading.top, leading: paddingTopLeading.leading, bottom: 0, trailing: 0))
+        return startIndex...endIndex
     }
     
-    var numberOfEventDaysPerWeek: [Int] {
-        let calendar = Calendar.current
-        let startDay = calendar.component(.day, from: ekEvent.startDate)
-        let columnIndex = Int((startDay + CARRYOVER - 1) % objectSizes.NUMWEEK)
-        let numOfDays = calendar.numberOfDaysBetween(ekEvent.startDate, and: ekEvent.endDate)
+    var numberOfEventDaysPerWeeks: [Int] {
+        let startIndex = eventRangeInCalendar.lowerBound
+        let columnIndex = (startIndex) % 7
+        let numOfDays = (eventRangeInCalendar.upperBound - eventRangeInCalendar.lowerBound) + 1
         var sum = numOfDays + columnIndex
         var nodList: [Int] = []
         while true {
-            if sum - objectSizes.NUMWEEK > 0 {
-                nodList.append(objectSizes.NUMWEEK)
-                sum = sum - objectSizes.NUMWEEK
+            if sum - 7 > 0 {
+                nodList.append(7)
+                sum = sum - 7
             } else {
                 nodList.append(sum)
                 break
@@ -68,14 +61,36 @@ struct EventSeal: View {
         return nodList
     }
     
-    var paddingTopLeading: (top: CGFloat, leading: CGFloat) {
-        let startDay = Calendar.current.component(.day, from: ekEvent.startDate)
-        let rowIndex = Int((startDay + CARRYOVER - 1) / objectSizes.NUMWEEK)
-        let columnIndex = Int((startDay + CARRYOVER - 1) % objectSizes.NUMWEEK)
-        
-        let topPadding = CGFloat(rowIndex) * (objectSizes.HEIGHT_DATE + objectSizes.HEIGHT_EVENT_AREA) + CGFloat(rowIndex) + objectSizes.HEIGHT_DATE + ((showEvents ? objectSizes.HEIGHT_EVENT_RECTANGLE + 5 : objectSizes.HEIGHT_EVENT) * CGFloat(floor))
-        let leadingPadding = CGFloat(columnIndex) * (objectSizes.WIDTH_DATE) + ((objectSizes.WIDTH_DATE - objectSizes.WIDTH_EVENT) / 2)
-        
-        return (top: topPadding, leading: leadingPadding)
+    var body: some View {
+        ForEach(0..<numberOfEventDaysPerWeeks.count, id: \.self) { index in
+            let numDayPerWeek = numberOfEventDaysPerWeeks[index]
+            var paddingTopLeading: (top: CGFloat, leading: CGFloat) {
+                let startIndex = eventRangeInCalendar.lowerBound
+                let rowIndex = Int(startIndex / objectSizes.NUMWEEK) + index
+                let columnIndex = index > 0 ? 0 : startIndex % objectSizes.NUMWEEK
+                
+                let topPadding = CGFloat(rowIndex) * (objectSizes.HEIGHT_DATE + objectSizes.HEIGHT_EVENT_AREA) + objectSizes.HEIGHT_DATE + ((showEvents ? objectSizes.HEIGHT_EVENT_RECTANGLE + 5 : objectSizes.HEIGHT_EVENT) * CGFloat(step))
+                let leadingPadding = CGFloat(columnIndex) * (objectSizes.WIDTH_DATE) + ((objectSizes.WIDTH_DATE - objectSizes.WIDTH_EVENT) / 2)
+                
+                return (top: topPadding, leading: leadingPadding)
+            }
+            VStack(spacing: 0) {
+                if !showEvents {
+                    Text(ekEvent.title)
+                        .kerning(0)
+                        .font(.system(size: 9,weight: .bold))
+                        .foregroundColor(.black)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: objectSizes.WIDTH_EVENT_TITLE, height: 9, alignment: .top)
+                        .clipped()
+                        .animation(.easeOut, value: showEvents)
+                }
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(ekEvent.calendar.cgColor))
+                    .frame(height: objectSizes.HEIGHT_EVENT_RECTANGLE)
+            }
+            .frame(width: objectSizes.WIDTH_DATE * CGFloat(numDayPerWeek) - 2, height: objectSizes.HEIGHT_EVENT)
+            .padding(EdgeInsets(top: paddingTopLeading.top, leading: paddingTopLeading.leading, bottom: 0, trailing: 0))
+        }
     }
 }

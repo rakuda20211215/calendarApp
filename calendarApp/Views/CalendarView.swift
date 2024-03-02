@@ -12,18 +12,12 @@ import EventKit
 
 struct CalendarView: View {
     @EnvironmentObject private var customColor: CustomColor
-    @ObservedObject private var eventData: EventData = EventData()
-    @ObservedObject private var dateObj: DateObject = DateObject()
+    @EnvironmentObject private var eventViewController: EventViewController
+    @EnvironmentObject private var calendarDateComp: CalendarDateComponent
+    //@EnvironmentObject private var eventStoreManager: EventStoreManager
+    //@ObservedObject private var eventViewController: EventViewController = EventViewController(eventStore: EventData.eventStore)
+    //@ObservedObject private var eventData: EventData = EventData()
     @State private var selection: Int = 0
-    
-    private var selectedDateEvents: [EKEvent]? {
-        if let eventDate = eventData.selectedEventDate {
-            let ekEvents = eventData.eventController.getEvents(date: eventDate)
-            return !ekEvents.isEmpty ? ekEvents : nil
-        } else {
-            return nil
-        }
-    }
     
     // イベント追加画面
     @State private var showAddEventView: Bool = false
@@ -33,9 +27,9 @@ struct CalendarView: View {
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "ja_JP")
         formatter.timeZone = TimeZone(identifier:  "Asia/Tokyo")
-        if let date = eventData.selectedEventDate,
-           (dateObj.getYear(date) != dateObj.getYear()
-            || dateObj.getYear(date) != dateObj.yearView) {
+        if let date = eventViewController.selectedEventDate,
+           (CalendarDateComponent.getYear(date) != CalendarDateComponent.getYear()
+            || CalendarDateComponent.getYear(date) != calendarDateComp.yearView) {
             formatter.dateFormat = "yyyy年M月d日(EEEEE)"
         } else {
             formatter.dateFormat = "M月d日(EEEEE)"
@@ -50,7 +44,7 @@ struct CalendarView: View {
             let CONTENT_HEIGHT = height - 45
             let CALENDAR_WIDTH = width - 8
             var CALENDAR_EVENT_HEIGHT: CGFloat {
-                if !eventData.showEvents {
+                if !eventViewController.showEvents {
                     return CONTENT_HEIGHT
                 } else {
                     return CONTENT_HEIGHT / 2
@@ -63,7 +57,7 @@ struct CalendarView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // トップバー
                     HStack {
-                        Text("\(dateObj.yearView.description)年\(dateObj.monthView)月")
+                        Text("\(calendarDateComp.yearView.description)年\(calendarDateComp.monthView)月")
                             .foregroundColor(customColor.backGround)
                             .font(.system(size: 20, weight: .bold))
                             .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
@@ -71,14 +65,19 @@ struct CalendarView: View {
                         
                         Button{
                             withAnimation(.easeInOut) {
-                                dateObj.yearView = dateObj.getYear()
-                                dateObj.monthView = dateObj.getMonth()
+                                calendarDateComp.yearView = CalendarDateComponent.getYear()
+                                calendarDateComp.monthView = CalendarDateComponent.getMonth()
                                 selection = 0
                             }
                         } label: {
-                            Image(systemName: "v.square.fill")
-                                .foregroundColor(customColor.backGround)
-                                .font(.system(size: 20))
+                            //Image("today_symbol")
+                            Text("\(CalendarDateComponent.getMonth())")
+                                .font(.system(size: 16))
+                                .fontWeight(.heavy)
+                                .frame(width: 50, height: 20)
+                                .foregroundColor(customColor.homeBack)
+                                .background(customColor.backGround)
+                                .clipShape(RoundedRectangle(cornerRadius: 5))
                                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         }
                         
@@ -91,18 +90,17 @@ struct CalendarView: View {
                                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10))
                         }
                         .sheet(isPresented: $showAddEventView) {
-                            AddEventView()
-                            //.environmentObject(eventData)
+                            AddEventView($showAddEventView)
+                                //.environmentObject(eventViewController)
+                                //.environmentObject(eventStoreManager)
                         }
                         
                         Button{
                             //kari -----
                             if let gUrl = URL(string: "comgooglemaps://")
                                 ,UIApplication.shared.canOpenURL(gUrl) {
-                                print(UIApplication.shared.canOpenURL(gUrl))
                                 UIApplication.shared.open(gUrl)
                             }
-                            eventData.selectedEventDate = nil
                             
                         } label: {
                             Image(systemName: "ellipsis")
@@ -118,41 +116,44 @@ struct CalendarView: View {
                         // カレンダー
                         VStack(spacing: 0) {
                             TabView(selection: $selection) {
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView - 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, contentHeight: CONTENT_HEIGHT - padding)
+                                MonthCalendar(YEAR: calendarDateComp.yearView, MONTH: calendarDateComp.monthView - 1, contentHeight: CONTENT_HEIGHT - padding)
+                                    //.environmentObject(eventViewController)
                                     .frame(width: CALENDAR_WIDTH)
                                     .tag(-1)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, contentHeight: CONTENT_HEIGHT - padding)
+                                MonthCalendar(YEAR: calendarDateComp.yearView, MONTH: calendarDateComp.monthView, contentHeight: CONTENT_HEIGHT - padding)
+                                    //.environmentObject(eventViewController)
                                     .frame(width: CALENDAR_WIDTH)
                                     .onDisappear() {
                                         if selection != 0 {
-                                            dateObj.updateDateObj(selection: selection)
+                                            calendarDateComp.updateDateObj(selection: selection)
                                             selection = 0
                                         }
                                     }
                                     .tag(0)
                                 
-                                MonthCalendar(YEAR: dateObj.yearView, MONTH: dateObj.monthView + 1, eventData: eventData, selectedEventDate: $eventData.selectedEventDate, contentHeight: CONTENT_HEIGHT - padding)
+                                MonthCalendar(YEAR: calendarDateComp.yearView, MONTH: calendarDateComp.monthView + 1, contentHeight: CONTENT_HEIGHT - padding)
+                                    //.environmentObject(eventViewController)
                                     .frame(width: CALENDAR_WIDTH)
                                     .tag(1)
                             }
                             .tabViewStyle(.page(indexDisplayMode: .never))
                         }
                         .frame(height: CALENDAR_EVENT_HEIGHT - padding)
-                        .animation(.easeOut, value: eventData.showEvents)
+                        .animation(.easeOut, value: eventViewController.showEvents)
                         
                         Spacer()
                         // イベント
-                        if eventData.showEvents,
-                           let ekEvents = selectedDateEvents {
+                        if eventViewController.showEvents,
+                           let selectedDate = eventViewController.selectedEventDate {
                             VStack(spacing: 0) {
                                 HStack(spacing: 0) {
-                                    Text(dateFormatterDate.string(from: eventData.selectedEventDate!))
+                                    Text(dateFormatterDate.string(from: selectedDate))
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(customColor.backGround)
                                     Spacer()
                                     Button {
-                                        eventData.showEvents.toggle()
+                                        eventViewController.toggleShowEvents()
                                     } label: {
                                         Image(systemName: "triangle.fill")
                                             .resizable()
@@ -175,13 +176,17 @@ struct CalendarView: View {
                                  }
                                  */
                                 
-                                EventList(ekEvents, target: eventData.selectedEventDate!)
+                                EventList(eventViewController.eventController.getEvents(date: selectedDate), target: selectedDate)
+                                    //.environmentObject(eventViewController)
                                     .foregroundStyle(customColor.backGround)
-                                    .environmentObject(eventData)
+                                    //.environmentObject(eventStoreManager)
+                                    .onAppear {
+                                        eventViewController.updateSelectedDayEvents()
+                                    }
                             }
                             .frame(height: CALENDAR_EVENT_HEIGHT - padding)
                             .zIndex(-1)
-                            .animation(.easeOut, value: eventData.showEvents)
+                            //.animation(.easeOut, value: eventViewController.showEvents)
                         }
                         
                     }
@@ -203,73 +208,10 @@ enum dateElements {
     case minute
 }
 
-class DateObject: ObservableObject {
-    var year: Int
-    var month: Int
-    @Published var yearView: Int
-    @Published var monthView: Int
-    @Published var viewDate: Date
-    var rangeMonth: [Int] = Array<Int>(-2...2)
-    let calendar: Calendar
-    
-    init(viewDate: Date = Date()) {
-        self.viewDate = viewDate
-        self.year = Calendar.current.component(.year, from: viewDate)
-        self.month = Calendar.current.component(.month, from: viewDate)
-        self.yearView = year
-        self.monthView = month
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "Asia/Tokyo") ?? calendar.timeZone
-        calendar.locale = Locale(identifier: "ja_JP")
-        self.calendar = calendar
-    }
-    
-    func initializObj(date: Date) {
-        self.viewDate = date
-        self.rangeMonth = Array<Int>(-2...2)
-        self.year = Calendar.current.component(.year, from: date)
-        self.month = Calendar.current.component(.month, from: date)
-        self.yearView = year
-        self.monthView = month
-    }
-    
-    func updateDateObj(selection: Int) {
-        if selection < 0 {
-            self.monthView -= 1
-            if self.monthView < 1 {
-                self.monthView = 12
-                self.yearView -= 1
-            }
-        } else {
-            self.monthView += 1
-            if self.monthView > 12 {
-                self.monthView = 1
-                self.yearView += 1
-            }
-        }
-    }
-    
-    func getYear(_ date: Date = Date()) -> Int {
-        calendar.component(.year, from: date)
-    }
-    func getMonth(_ date: Date = Date()) -> Int {
-        calendar.component(.month, from: date)
-    }
-    func getDay(_ date: Date = Date()) -> Int {
-        calendar.component(.day, from: date)
-    }
-    func getHour(_ date: Date = Date()) -> Int {
-        calendar.component(.hour, from: date)
-    }
-    func getMinute(_ date: Date = Date()) -> Int {
-        calendar.component(.minute, from: date)
-    }
-}
 
 struct CalendarView_Previews: PreviewProvider {
     static var previews: some View {
         CalendarView()
             .environmentObject(CustomColor(foreGround: .black, backGround: .white))
-            .environmentObject(EventData())
     }
 }

@@ -11,12 +11,13 @@ import EventKitUI
 struct EditEventView: View {
     @EnvironmentObject private var customColor: CustomColor
     @EnvironmentObject private var eventData: EventData
+    //@ObservedObject private var eventData: EventData
     @State private var isShownTabCalendar: Bool = false
     @State private var tabCalendarX: CGFloat = 0
     @State private var tabCalendarY: CGFloat = 0
-    var startDayDateObj: DateObject = DateObject()
-    var endDayDateObj: DateObject = DateObject()
-    @State private var title: String = ""
+    var startDayDateObj: CalendarDateComponent = CalendarDateComponent()
+    var endDayDateObj: CalendarDateComponent = CalendarDateComponent()
+    //@State private var title: String = ""
     @State private var location: String = ""
     @State private var url: String = ""
     @State private var memo: String = ""
@@ -24,6 +25,7 @@ struct EditEventView: View {
 
     init(isActiveAdd: Binding<Bool>) {
         self._isActiveAdd = isActiveAdd
+        //self.eventData = EventData(eventStore: eventStoreManager.eventStore)
     }
     
     var body: some View {
@@ -37,20 +39,19 @@ struct EditEventView: View {
                 ZStack(alignment: .topLeading) {
                     VStack(spacing: 0) {
                         // タイトル
-                        TextField("タイトル", text: $title)
+                        TextField("タイトル", text: $eventData.ekEvent.title)
                             .multilineTextAlignment(.center)
                             .font(.system(size: 25,weight: .bold))
                             .padding(EdgeInsets(top: verticalPadding, leading: 0, bottom: verticalPadding, trailing: 0))
                             .frame(height: HEIGHT_TITLE)
-                            .onChange(of: title) { _ in
-                                if title.count > 0 {
-                                    eventData.ekEvent.title = title
+                            .onChange(of: eventData.ekEvent.title) { _ in
+                                if eventData.ekEvent.title.count > 0 {
+                                    //eventData.ekEvent.title = title
                                     isActiveAdd = true
                                 } else {
-                                    eventData.ekEvent.title = nil
+                                    //eventData.ekEvent.title = nil
                                     isActiveAdd = false
                                 }
-                                print(eventData.ekEvent.title.count)
                             }
                         
                         HorizontalLine()
@@ -98,6 +99,11 @@ struct EditEventView: View {
                             .frame(height: 1)
                         
                         TextField("場所", text: $location)
+                            .onAppear {
+                                if let edLocation = eventData.ekEvent.location {
+                                    location = edLocation
+                                }
+                            }
                             .onChange(of: location) { _ in
                                 if location.count > 0 {
                                     eventData.ekEvent.location = location
@@ -111,6 +117,11 @@ struct EditEventView: View {
                             .frame(height: 1)
                         
                         TextField("URL", text: $url)
+                            .onAppear {
+                                if let edUrl = eventData.ekEvent.url {
+                                    url = edUrl.absoluteString
+                                }
+                            }
                             .onChange(of: url) { _ in
                                 if url.count > 0 {
                                     eventData.ekEvent.url = URL(string: url)
@@ -124,6 +135,11 @@ struct EditEventView: View {
                             .frame(height: 1)
                         
                         TextField("メモ", text: $memo)
+                            .onAppear {
+                                if let edMemo = eventData.ekEvent.notes {
+                                    memo = edMemo
+                                }
+                            }
                             .onChange(of: memo) { _ in
                                 if memo.count > 0 {
                                     eventData.ekEvent.notes = memo
@@ -165,7 +181,11 @@ struct TabCalendar: View {
         eventData.eventController.getCalendars()
     }
     var currentCalendar: EKCalendar {
-        eventData.currentCalendar!
+        if let calendar = eventData.currentCalendar {
+            return calendar
+        } else {
+            return calendars[0]
+        }
     }
     let width: CGFloat
     let HEIGHT_TITLE: CGFloat
@@ -181,6 +201,7 @@ struct TabCalendar: View {
     var body: some View {
         let keys: Array<EKSourceType> = Array(calendarsBySource.keys).sorted(by: { $0.rawValue < $1.rawValue })
         VStack(spacing: 0) {
+            
             HStack {
                 Circle()
                     .frame(height: HEIGHT_CIRCLE)
@@ -203,8 +224,10 @@ struct TabCalendar: View {
                     ForEach(keys, id: \.self) { key in
                         Text(calendarsBySource[key]![0].source.title)
                             .font(.system(size: 10))
+                        
                         HStack(spacing: 2) {
                             ForEach(calendarsBySource[key]!, id: \.self) { calendar in
+                                
                                 Button {
                                     //eventData.ekEvent.calendar = calendar
                                     eventData.currentCalendar = calendar
@@ -212,11 +235,12 @@ struct TabCalendar: View {
                                         isShown.toggle()
                                     }
                                 } label: {
-                                    CalendarSeal(calendar: calendar, isCurrent: calendar == currentCalendar)
+                                    CalendarSeal(ekCalendar: calendar, isCurrent: calendar == currentCalendar)
                                 }
                             }
                         }
                         .padding(10)
+                         
                     }
                 }
                 .padding(10)
@@ -225,7 +249,7 @@ struct TabCalendar: View {
                     .stroke(.black, lineWidth: 0.5))
                 .cornerRadius(10)
                 .padding(EdgeInsets(top: -3, leading: 0, bottom: 0, trailing: -10))
-            }
+             }
         }
         .background(customColor.backGround)
     }
@@ -249,19 +273,19 @@ struct TabCalendar: View {
 }
 
 struct CalendarSeal: View {
-    var calendar: EKCalendar
+    var ekCalendar: EKCalendar
     var isCurrent: Bool
     let padding: CGFloat = 7
     var color: CGColor {
-        calendar.cgColor.copy(alpha: 0.3)!
+        ekCalendar.cgColor.copy(alpha: 0.3)!
     }
     var body: some View {
         HStack(spacing: 0) {
             Circle()
                 .frame(height: 10)
-                .foregroundColor(Color(calendar.cgColor))
+                .foregroundColor(Color(ekCalendar.cgColor))
                 .padding(padding)
-            Text(calendar.title)
+            Text(ekCalendar.title)
                 .font(.system(size: 10))
                 .padding(padding)
         }
@@ -272,7 +296,7 @@ struct CalendarSeal: View {
 
 struct DateTimeSelect: View {
     @EnvironmentObject var eventData: EventData
-    @EnvironmentObject var dayDateObj: DateObject
+    @EnvironmentObject var calendarDateComp: CalendarDateComponent
     @EnvironmentObject private var customColor: CustomColor
     @Binding var date: Date
     @Binding private var isShownTabCalendar: Bool
@@ -286,7 +310,7 @@ struct DateTimeSelect: View {
     let radius: CGFloat = 5
     let linewidth: CGFloat = 2
     var minuteToMultiple5: Int {
-        (dayDateObj.getMinute(date) / 5) * 5
+        (CalendarDateComponent.getMinute(date) / 5) * 5
     }
     
     init (startOrEnd: Int, date: Binding<Date>, width: CGFloat, isShownTabCalendar: Binding<Bool>) {
@@ -320,7 +344,7 @@ struct DateTimeSelect: View {
             // 日付
             Button {
                 withAnimation(.easeOut) {
-                    dayDateObj.initializObj(date: date)
+                    calendarDateComp.initializObj(date: date)
                     if eventData.visibleSwitch == visibleDate {
                         eventData.visibleSwitch = .invisible
                     } else {
@@ -354,7 +378,7 @@ struct DateTimeSelect: View {
                     isShownTabCalendar = false
                 }
             } label: {
-                Text(!eventData.isAllDay ? "\(dayDateObj.getHour(date)):\(String(format: "%02d", minuteToMultiple5))" : "")
+                Text(!eventData.isAllDay ? "\(CalendarDateComponent.getHour(date)):\(String(format: "%02d", minuteToMultiple5))" : "")
                     .fontWeight(.bold)
                     .frame(width: abs((width / 2) - 15) * 0.3)
             }
@@ -389,7 +413,7 @@ struct DateTimeSelect: View {
                             }
                         }
                         .onChange(of: hour) { _ in
-                            let calendar = dayDateObj.calendar
+                            let calendar = CalendarDateComponent.calendar
                             var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
                             components.hour = hour
                             date = calendar.date(from: components)!
@@ -401,7 +425,7 @@ struct DateTimeSelect: View {
                             }
                         }
                         .onChange(of: minute) { _ in
-                            let calendar = dayDateObj.calendar
+                            let calendar = CalendarDateComponent.calendar
                             var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
                             components.minute = minute
                             date = calendar.date(from: components)!
@@ -409,8 +433,8 @@ struct DateTimeSelect: View {
                         }
                     }
                     .onAppear() {
-                        self.hour = dayDateObj.getHour(date)
-                        self.minute = dayDateObj.getMinute(date)
+                        self.hour = CalendarDateComponent.getHour(date)
+                        self.minute = CalendarDateComponent.getMinute(date)
                     }
                 }
             }
@@ -420,19 +444,18 @@ struct DateTimeSelect: View {
 
 struct selectYear: View {
     @EnvironmentObject var eventData: EventData
-    @EnvironmentObject var dayDateObj: DateObject
+    @EnvironmentObject var calendarDateComp: CalendarDateComponent
     @Binding var date: Date
     
     var body: some View {
-        let initialPosition = dayDateObj.calendar.component(.year, from: date)
-        HorizontalWheelPicker(initialCenterItem: initialPosition, selection: $dayDateObj.yearView, numItem: 5, items: Array(1500...3000)) { index in
+        let initialPosition = CalendarDateComponent.calendar.component(.year, from: date)
+        HorizontalWheelPicker(initialCenterItem: initialPosition, selection: $calendarDateComp.yearView, numItem: 5, items: Array(1500...3000)) { index in
             Text(index.description)
         } onChangeEvent: { item in
-            let calendar = dayDateObj.calendar
-            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
+            var components = CalendarDateComponent.calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
             components.year = item
-            date = calendar.date(from: components)!
-            dayDateObj.initializObj(date: date)
+            date = CalendarDateComponent.calendar.date(from: components)!
+            calendarDateComp.initializObj(date: date)
             EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
         }
         .frame(height: 40)
@@ -441,7 +464,7 @@ struct selectYear: View {
 
 struct selectMonth: View {
     @EnvironmentObject var eventData: EventData
-    @EnvironmentObject var dayDateObj: DateObject
+    @EnvironmentObject var calendarDateComp: CalendarDateComponent
     @Binding var date: Date
     @State private var index: Int
     init(date: Binding<Date>) {
@@ -449,14 +472,13 @@ struct selectMonth: View {
         self._index = State(initialValue: Calendar.current.component(.month, from: date.wrappedValue))
     }
     var body: some View {
-        HorizontalWheelPicker(initialCenterItem: dayDateObj.calendar.component(.month, from: date), selection: $dayDateObj.monthView, numItem: 5, items: Array(1...12)) { index in
+        HorizontalWheelPicker(initialCenterItem: CalendarDateComponent.calendar.component(.month, from: date), selection: $calendarDateComp.monthView, numItem: 5, items: Array(1...12)) { index in
             Text(index.description)
         } onChangeEvent: { item in
-            let calendar = dayDateObj.calendar
-            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
+            var components = CalendarDateComponent.calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
             components.month = item
-            date = calendar.date(from: components)!
-            dayDateObj.initializObj(date: date)
+            date = CalendarDateComponent.calendar.date(from: components)!
+            calendarDateComp.initializObj(date: date)
             EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
         }
         .frame(height: 40)
@@ -465,7 +487,7 @@ struct selectMonth: View {
 
 struct selectDate: View {
     @EnvironmentObject var eventData: EventData
-    @EnvironmentObject var dateObj: DateObject
+    @EnvironmentObject var calendarDateComp: CalendarDateComponent
     @EnvironmentObject private var customColor: CustomColor
     @Binding var date: Date
     let diffMonth: Int
@@ -478,11 +500,11 @@ struct selectDate: View {
     }
     
     var body: some View {
-        let calendar = dateObj.calendar
+        let calendar = CalendarDateComponent.calendar
         let viewDate = calendar.date(from: DateComponents(
-            year: dateObj.getYear(dateObj.viewDate),
-            month: dateObj.getMonth(dateObj.viewDate) + diffMonth,
-            day: dateObj.getDay(dateObj.viewDate)))!
+            year: CalendarDateComponent.getYear(calendarDateComp.viewDate),
+            month: CalendarDateComponent.getMonth(calendarDateComp.viewDate) + diffMonth,
+            day: CalendarDateComponent.getDay(calendarDateComp.viewDate)))!
         let itemWidth = width / 7
         let rowMonth = 6
         let infoMonth = InfoMonth(date: viewDate)
@@ -491,7 +513,7 @@ struct selectDate: View {
             // 週
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { index in
-                    Text(infoMonth.getWeek()[index])
+                    Text(CalendarDateComponent.getWeekSymbols[index])
                         .frame(width: itemWidth, height: 10)
                         .font(.system(size: 10))
                 }
@@ -503,13 +525,13 @@ struct selectDate: View {
                         VStack(spacing: 0) {
                             let year = calendar.component(.year, from: viewDate)
                             let month = calendar.component(.month, from: viewDate)
-                            let day = infoMonth.getDay(rowIndex, columnIndex, infoMonth.noWeekFirstDate)
+                            let day = infoMonth.getDayFromPosition(rowIndex, columnIndex)
                             let dateComp = DateComponents(calendar: calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"),year: year, month: month, day: day)
                             let itemDate = calendar.date(from: dateComp)!
+                            let intRangeMonth = CalendarDateComponent.calendar.range(of: .day, in: .month, for: itemDate)!
                             
-                            if infoMonth.rangeMonth ~= day {
+                            if intRangeMonth ~= day {
                                 Button {
-                                    let calendar = dateObj.calendar
                                     var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
                                     components.day = day
                                     date = calendar.date(from: components)!
@@ -517,11 +539,11 @@ struct selectDate: View {
                                 } label: {
                                     //日付
                                     Text(day.description)
-                                        .foregroundColor(compareDate(itemDate, currentDate: date) ? .white : .black)
+                                        .foregroundColor(compareYearToDate(itemDate, currentDate: date) ? .white : .black)
                                         .frame(width: 30, height: 30, alignment: .center)
-                                        .underline(color: compareDate(itemDate) ? (compareDate(itemDate, currentDate: date)  ? .white : .black) : .clear)
+                                        .underline(color: compareYearToDate(itemDate) ? (compareYearToDate(itemDate, currentDate: date)  ? .white : .black) : .clear)
                                         .font(.system(size: 13))
-                                        .background(compareDate(itemDate, currentDate: date) ? .black : .clear)
+                                        .background(compareYearToDate(itemDate, currentDate: date) ? .black : .clear)
                                         .cornerRadius(15)
                                         .frame(width: itemWidth)
                                 }
@@ -537,15 +559,14 @@ struct selectDate: View {
         .background(customColor.backGround)
     }
     
-    func compareDate(_ date: Date, currentDate: Date = Date()) -> Bool {
-        let calendar = dateObj.calendar
-        guard calendar.component(.year, from: date) == calendar.component(.year, from: currentDate) else {
+    func compareYearToDate(_ date: Date, currentDate: Date = Date()) -> Bool {
+        guard CalendarDateComponent.getYear(date) == CalendarDateComponent.getYear(currentDate) else {
             return false
         }
-        guard calendar.component(.month, from: date) == calendar.component(.month, from: currentDate) else {
+        guard CalendarDateComponent.getMonth(date) == CalendarDateComponent.getMonth(currentDate) else {
             return false
         }
-        guard calendar.component(.day, from: date) == calendar.component(.day, from: currentDate) else {
+        guard CalendarDateComponent.getDay(date) == CalendarDateComponent.getDay(currentDate) else {
             return false
         }
         return true
@@ -554,7 +575,7 @@ struct selectDate: View {
 
 struct selectDateTab: View {
     @EnvironmentObject var eventData: EventData
-    @EnvironmentObject var dateObj: DateObject
+    @EnvironmentObject var calendarDateComp: CalendarDateComponent
     @Binding var date: Date
     @State private var selection: Int = 0
     let width: CGFloat
@@ -567,17 +588,17 @@ struct selectDateTab: View {
                         .frame(width: width)
                     
                     selectDate(date: $date, diffMonth: 0, width: width).tag(0)
-                            .frame(width: width)
+                        .frame(width: width)
                         .onDisappear() {
                             if selection != 0 {
-                                dateObj.updateDateObj(selection: selection)
+                                calendarDateComp.updateDateObj(selection: selection)
                                 
-                                let calendar = dateObj.calendar
+                                let calendar = CalendarDateComponent.calendar
                                 var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: date)
-                                components.year = dateObj.yearView
-                                components.month = dateObj.monthView
+                                components.year = calendarDateComp.yearView
+                                components.month = calendarDateComp.monthView
                                 date = calendar.date(from: components)!
-                                dateObj.viewDate = date
+                                calendarDateComp.viewDate = date
                                 EventData.compareStartEnd(ekEvent: eventData.ekEvent, date: date)
                                 
                                 selection = 0

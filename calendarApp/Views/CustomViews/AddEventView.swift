@@ -10,15 +10,20 @@ import EventKit
 
 struct AddEventView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var eventViewController: EventViewController
+    //@EnvironmentObject private var eventData: EventData
     @EnvironmentObject private var customColor: CustomColor
+    //@EnvironmentObject private var eventStoreManager: EventStoreManager
     private var eventData: EventData = EventData()
     
     @State private var isActiveAdd: Bool = false
+    @Binding private var isShowAddView: Bool
+    
+    init(_ isShowAddView: Binding<Bool>) {
+        self._isShowAddView = isShowAddView
+    }
     
     var body: some View {
-        // ここから
-        // NavigationStackとtoolvar ついか
-        
         NavigationStack {
             EditEventView(isActiveAdd: $isActiveAdd)
                 .environmentObject(eventData)
@@ -26,8 +31,8 @@ struct AddEventView: View {
                 .toolbar() {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
-                            eventData.initializeObj()
-                            dismiss()
+                            eventData.initializeEvent()
+                            isShowAddView.toggle()
                         } label: {
                             Text("キャンセル")
                                 .foregroundStyle(customColor.cancel)
@@ -40,11 +45,11 @@ struct AddEventView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             if isActiveAdd {
-                                eventData.ekEvent.isAllDay = eventData.isAllDay
-                                eventData.ekEvent.calendar = eventData.currentCalendar
-                                let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
-                                eventData.initializeObj()
-                                dismiss()
+                                Task {
+                                    await addEventAsync()
+                                    isShowAddView.toggle()
+                                    //eventData.initializeEvent()
+                                }
                             }
                         } label: {
                             Text("追加")
@@ -52,14 +57,14 @@ struct AddEventView: View {
                         }
                     }
                 }
-        }
+       }
+    }
+    
+    func addEventAsync() async {
+        eventData.ekEvent.isAllDay = eventData.isAllDay
+        eventData.ekEvent.calendar = eventData.currentCalendar
+        let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
+        //eventViewController.updateSelectedDayEvents()
     }
 }
 
-
-struct AddEventView_Previews: PreviewProvider {
-    static var previews: some View {
-        AddEventView()
-            .environmentObject(CustomColor(foreGround: .black, backGround: .white))
-    }
-}

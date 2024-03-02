@@ -9,6 +9,7 @@ import SwiftUI
 import EventKit
 
 struct EventSealLong: View {
+    //@EnvironmentObject private var eventData: EventData
     @EnvironmentObject private var customColor: CustomColor
     let ekEvent: EKEvent
     //let eventController: EventControllerClass
@@ -31,27 +32,25 @@ struct EventSealLong: View {
         
         self.period = period
         
-        let dateObj: DateObject = DateObject()
-        
-        let startDay: Int = dateObj.getDay(ekEvent.startDate)
-        let endDay:   Int = dateObj.getDay(ekEvent.endDate)
+        let startDay: Int = CalendarDateComponent.getDay(ekEvent.startDate)
+        let endDay:   Int = CalendarDateComponent.getDay(ekEvent.endDate)
         
         switch period {
         case .year:
-            self.startTime = "\(dateObj.getMonth(ekEvent.startDate)) / \(startDay)"
-            self.endTime   = "\(dateObj.getMonth(ekEvent.endDate)) / \(endDay)"
+            self.startTime = "\(CalendarDateComponent.getMonth(ekEvent.startDate)) / \(startDay)"
+            self.endTime   = "\(CalendarDateComponent.getMonth(ekEvent.endDate)) / \(endDay)"
         case .month:
             self.startTime = "\(startDay)"
             self.endTime   = "\(endDay)"
         default:
             // 終日チェック
-            let day: Int = dateObj.getDay(date!)
+            let day: Int = CalendarDateComponent.getDay(date!)
             
             if startDay == day {
-                startTime = "\(dateObj.getHour(ekEvent.startDate)):\(String(format: "%02d", (dateObj.getMinute(ekEvent.startDate))))"
+                startTime = "\(CalendarDateComponent.getHour(ekEvent.startDate)):\(String(format: "%02d", (CalendarDateComponent.getMinute(ekEvent.startDate))))"
                 
-                if 0 == dateObj.getHour(ekEvent.startDate)
-                    && 0 == dateObj.getMinute(ekEvent.startDate) {
+                if 0 == CalendarDateComponent.getHour(ekEvent.startDate)
+                    && 0 == CalendarDateComponent.getMinute(ekEvent.startDate) {
                     isAllDayStart = true
                 } else {
                     isAllDayStart = false
@@ -62,10 +61,10 @@ struct EventSealLong: View {
             }
             
             if endDay == day {
-                endTime = "\(dateObj.getHour(ekEvent.endDate)):\(String(format: "%02d", (dateObj.getMinute(ekEvent.endDate))))"
+                endTime = "\(CalendarDateComponent.getHour(ekEvent.endDate)):\(String(format: "%02d", (CalendarDateComponent.getMinute(ekEvent.endDate))))"
                 
-                if 23 == dateObj.getHour(ekEvent.endDate)
-                    && 59 == dateObj.getMinute(ekEvent.endDate) {
+                if 23 == CalendarDateComponent.getHour(ekEvent.endDate)
+                    && 59 == CalendarDateComponent.getMinute(ekEvent.endDate) {
                     isAllDayend = true
                 } else {
                     isAllDayend = false
@@ -188,23 +187,32 @@ struct EventSealLong: View {
                         }
                     }
                     Divider()
-                    Button {
-                        infoSelection = .copy
-                    } label: {
-                        Label(infoElements.copy.rawValue, image: "calendar_add")
-                    }
-                    Button(role: .destructive) {
-                        infoSelection = .remove
-                        showInfo.toggle()
-                    } label: {
-                        Label(infoElements.remove.rawValue, systemImage: "trash")
-                            .foregroundColor(.red)
+                    if ekEvent.calendar.allowsContentModifications {
+                        Button {
+                            infoSelection = .edit
+                            showInfo.toggle()
+                        } label: {
+                            Label(infoElements.edit.rawValue, systemImage: "square.and.pencil")
+                        }
+                        Button {
+                            infoSelection = .copy
+                        } label: {
+                            Label(infoElements.copy.rawValue, systemImage: "calendar.badge.plus")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            infoSelection = .remove
+                            showInfo.toggle()
+                        } label: {
+                            Label(infoElements.remove.rawValue, systemImage: "trash")
+                                .foregroundColor(.red)
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .resizable()
                         .renderingMode(.original)
-                        .foregroundStyle(customColor.backGround)
+                        .foregroundStyle(ekEvent.location != nil || isValidURL || ekEvent.calendar.allowsContentModifications ? customColor.backGround : customColor.backGround.opacity(0.3))
                         .frame(width: infoCircleSize, height: infoCircleSize)
                         .padding(padding)
                 }
@@ -221,7 +229,7 @@ struct EventSealLong: View {
                     .foregroundStyle(customColor.foreGround)
             }
             .sheet(isPresented: $showInfo) {
-                BrowsOrRemoveOrMap(ekEvent: ekEvent, showInfo: $showInfo, infoSelection: $infoSelection)
+                BrowsOrEditOrRemoveOrMap(ekEvent: ekEvent, showInfo: $showInfo, infoSelection: $infoSelection)
             }
         }
     }
@@ -238,17 +246,20 @@ struct EventSealLong: View {
         }
     }
     
-    struct BrowsOrRemoveOrMap: View {
+    struct BrowsOrEditOrRemoveOrMap: View {
+        @EnvironmentObject private var eventViewController: EventViewController
         @EnvironmentObject private var customColor: CustomColor
-        var ekEvent: EKEvent
-        
+        private var ekEvent: EKEvent
+        private var eventData: EventData = EventData()
         @Binding var showInfo: Bool
         @Binding var infoSelection: infoElements?
+        @State private var isActiveSave: Bool = true
         
         init(ekEvent: EKEvent, showInfo: Binding<Bool>, infoSelection: Binding<infoElements?>) {
             self.ekEvent = ekEvent
             self._showInfo = showInfo
             self._infoSelection = infoSelection
+            eventData.ekEvent = ekEvent
         }
         var body: some View {
             NavigationStack {
@@ -257,6 +268,39 @@ struct EventSealLong: View {
                     MapView(address: ekEvent.location!, showInfo: $showInfo)
                 case .url:
                     WebViewCustom(url: ekEvent.url!, showInfo: $showInfo)
+                case .edit:
+                    EditEventView(isActiveAdd: $isActiveSave)
+                        .environmentObject(eventData)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar() {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button {
+                                    eventData.initializeEvent()
+                                    showInfo.toggle()
+                                } label: {
+                                    Text("キャンセル")
+                                        .foregroundStyle(customColor.cancel)
+                                }
+                            }
+                            ToolbarItem(placement: .principal) {
+                                    Text("イベント編集")
+                                    .foregroundStyle(customColor.foreGround)
+                            }
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button {
+                                    if isActiveSave {
+                                        eventData.ekEvent.isAllDay = eventData.isAllDay
+                                        eventData.ekEvent.calendar = eventData.currentCalendar
+                                        let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
+                                        eventViewController.updateSelectedDayEvents()
+                                        showInfo.toggle()
+                                    }
+                                } label: {
+                                    Text("完了")
+                                        .foregroundStyle(isActiveSave ? customColor.complete : customColor.invalid)
+                                }
+                            }
+                        }
                 case .remove:
                     RemoveView(ekEvent: ekEvent, showInfo: $showInfo)
                 default:
@@ -275,6 +319,7 @@ struct EventSealLong: View {
         case copy = "イベントを複製"
         case location = "マップを表示"
         case url = "ブラウザを表示"
+        case edit = "編集"
         case remove = "消去"
     }
 }
