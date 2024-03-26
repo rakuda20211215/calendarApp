@@ -14,12 +14,17 @@ import Foundation
 import EventKit
 
 struct ContentView: View {
-    @ObservedObject private var eventViewController: EventViewController = EventViewController(eventStore: EventData.eventStore)
-    @ObservedObject private var calendarDateComp: CalendarDateComponent = CalendarDateComponent()
+    @ObservedObject private var eventViewController: EventViewController
+    @ObservedObject private var calendarDateUtil: CalendarDateUtil
+    init() {
+        EventController.requestAccess()
+        self.eventViewController = EventViewController(eventStore: EventData.eventStore)
+        self.calendarDateUtil = CalendarDateUtil()
+    }
     var body: some View {
         CalendarView()
             .environmentObject(eventViewController)
-            .environmentObject(calendarDateComp)
+            .environmentObject(calendarDateUtil)
             .environmentObject(CustomColor(foreGround: .black, backGround: .white))
     }
 }

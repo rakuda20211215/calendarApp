@@ -15,14 +15,13 @@ class EventData: ObservableObject {
     static var eventStore: EKEventStore = EKEventStore()
     
     @Published var ekEvent: EKEvent
-    @Published var eventController: EventControllerClass
     // 日付が過ぎると消去
     //@Published var isDeleteAfterEndDate: Bool
     
     @Published var isAllDay: Bool = false
     // 最初に表示するカレンダー
     var defaultEkCalendar: EKCalendar? {
-        eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        EventController.getCalendars().isEmpty ? nil : EventController.getCalendars()[0]
     }
     
     @Published var currentCalendar: EKCalendar?
@@ -42,12 +41,11 @@ class EventData: ObservableObject {
     }
     
     init(isDeleteAfterEndDate: Bool = false) {
-        self.eventController = EventControllerClass(eventStore: Self.eventStore)
         self.ekEvent = EKEvent(eventStore: Self.eventStore)
-        self.currentCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        self.currentCalendar = EventController.getCalendars().isEmpty ? nil : EventController.getCalendars()[0]
         self.ekEvent.calendar = self.currentCalendar
         
-        let calendar = CalendarDateComponent.calendar
+        let calendar = CalendarDateUtil.calendar
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
         let startDate = calendar.date(from: components)!
         self.ekEvent.startDate = startDate
@@ -61,10 +59,10 @@ class EventData: ObservableObject {
     
     func initializeEvent() {
         self.ekEvent = EKEvent(eventStore: Self.eventStore)
-        self.currentCalendar = eventController.getCalendars().isEmpty ? nil : eventController.getCalendars()[0]
+        self.currentCalendar = EventController.getCalendars().isEmpty ? nil : EventController.getCalendars()[0]
         self.ekEvent.calendar = self.currentCalendar
         
-        let calendar = CalendarDateComponent.calendar
+        let calendar = CalendarDateUtil.calendar
         var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: Date())
         let startDate = calendar.date(from: components)!
         self.ekEvent.startDate = startDate
@@ -83,16 +81,6 @@ enum visibleDateTime: Int {
     case endDate   = 2
     case endTime   = 3
     case invisible = 5
-}
-
-extension Calendar {
-    func numberOfDaysBetween(_ from: Date, and to: Date) -> Int {
-        let fromDate = startOfDay(for: from)
-        let toDate = startOfDay(for: to)
-        let numberOfDays = dateComponents([.day], from: fromDate, to: toDate) // <3>
-        
-        return numberOfDays.day! + 1
-    }
 }
 /*
 // カレンダーのオブジェクト

@@ -8,19 +8,41 @@
 import Foundation
 import RealmSwift
 
-class userData: Object {
+class userData: Object, ObjectKeyIdentifiable {
+    //@Persisted(primaryKey: true) public var id: Int = 0
     @Persisted var name = ""
+    convenience init(name: String = "") {
+        self.init()
+        self.name = name
+    }
+}
+
+class userData2: Object, ObjectKeyIdentifiable {
+    @Persisted(primaryKey: true) public var id: Int = 0
+    @Persisted var name = ""
+    convenience init(name: String = "") {
+        self.init()
+        self.name = name
+    }
 }
 
 final class modelData: ObservableObject {
-    @Published var shopdata: Results<userData> = getRealmData()
-    
-    func setter() -> Void {
-        shopdata = getRealmData()
+    func getter() {
+        let realm = try! Realm()
+        let shopdata = realm.objects(userData2.self)
+        if let aa = shopdata.first {
+            print(aa.name)
+        }
     }
-}
-func getRealmData() -> Results<userData> {
-    let realm = try! Realm()
     
-    return realm.objects(userData.self)
+    func saveName(_ str: String) {
+        let realm = try! Realm()
+        do {
+            try realm.write {
+                realm.add(userData2(name: str))
+            }
+        } catch {
+            print("error")
+        }
+    }
 }

@@ -45,11 +45,10 @@ struct AddEventView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             if isActiveAdd {
-                                Task {
-                                    await addEventAsync()
-                                    isShowAddView.toggle()
-                                    //eventData.initializeEvent()
-                                }
+                                eventData.ekEvent.isAllDay = eventData.isAllDay
+                                eventData.ekEvent.calendar = eventData.currentCalendar
+                                let _ = EventController.addEvent(ekEvent: eventData.ekEvent)
+                                isShowAddView.toggle()
                             }
                         } label: {
                             Text("追加")
@@ -61,9 +60,6 @@ struct AddEventView: View {
     }
     
     func addEventAsync() async {
-        eventData.ekEvent.isAllDay = eventData.isAllDay
-        eventData.ekEvent.calendar = eventData.currentCalendar
-        let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
         //eventViewController.updateSelectedDayEvents()
     }
 }

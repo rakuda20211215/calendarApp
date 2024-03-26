@@ -9,20 +9,22 @@ import Foundation
 import EventKit
 
 class EventViewController: ObservableObject {
+    @Published var shownEKCalendar: [EKCalendar]
     @Published var selectedDayEvents: [EKEvent]? = nil
     @Published var selectedEventDate: Date? = nil
     @Published var showEvents: Bool = false
     
-    let eventController: EventControllerClass
-    
     init(eventStore: EKEventStore) {
-        eventController = EventControllerClass(eventStore: eventStore)
+        self.shownEKCalendar = EventController.getCalendars(isShown: true)
+    }
+    
+    func updateShownEKCalendars() {
+        shownEKCalendar = EventController.getCalendars(isShown: true)
     }
     
     func updateSelectedDayEvents() {
         guard let eventDate = selectedEventDate else { return }
-            print("update")
-            let ekEvents = eventController.getEvents(date: eventDate)
+            let ekEvents = EventController.getEvents(date: eventDate)
             if !ekEvents.isEmpty {
                 selectedDayEvents = ekEvents
             } else {
@@ -32,7 +34,7 @@ class EventViewController: ObservableObject {
     }
     
     func updateSelectedDayEvents(date: Date) {
-        let ekEvents = eventController.getEvents(date: date)
+        let ekEvents = EventController.getEvents(date: date)
         if !ekEvents.isEmpty {
             selectedEventDate = date
             selectedDayEvents = ekEvents

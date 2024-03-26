@@ -23,7 +23,7 @@ struct EventList: View {
         self.endDate = end
         self.targetDate = nil
         
-        if CalendarDateComponent.getMonth(start) != CalendarDateComponent.getMonth(end) {
+        if CalendarDateUtil.getMonth(start) != CalendarDateUtil.getMonth(end) {
             isOverMonth = true
         } else {
             isOverMonth = false
@@ -36,12 +36,12 @@ struct EventList: View {
     init(_ ekEvents: [EKEvent], target: Date) {
         self.targetDate = target
         
-        let startDateComp = DateComponents(calendar: CalendarDateComponent.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: CalendarDateComponent.getYear(target), month: CalendarDateComponent.getMonth(target), day: CalendarDateComponent.getDay(target), hour: 0, minute: 0, second: 0)
-        let start = CalendarDateComponent.calendar.date(from: startDateComp)!
+        let startDateComp = DateComponents(calendar: CalendarDateUtil.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: CalendarDateUtil.getYear(target), month: CalendarDateUtil.getMonth(target), day: CalendarDateUtil.getDay(target), hour: 0, minute: 0, second: 0)
+        let start = CalendarDateUtil.calendar.date(from: startDateComp)!
         self.startDate = start
         
-        let endDateComp = DateComponents(calendar: CalendarDateComponent.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: CalendarDateComponent.getYear(target), month: CalendarDateComponent.getMonth(target), day: CalendarDateComponent.getDay(target), hour: 23, minute: 59, second: 59)
-        let end = CalendarDateComponent.calendar.date(from: endDateComp)!
+        let endDateComp = DateComponents(calendar: CalendarDateUtil.calendar, timeZone: TimeZone(identifier: "Asia/Tokyo"), year: CalendarDateUtil.getYear(target), month: CalendarDateUtil.getMonth(target), day: CalendarDateUtil.getDay(target), hour: 23, minute: 59, second: 59)
+        let end = CalendarDateUtil.calendar.date(from: endDateComp)!
         self.endDate = end
         
         self.ekEvents = ekEvents
@@ -80,6 +80,6 @@ struct EventList: View {
 }
 
 #Preview {
-    EventList([createEvent(day: 28), createEvent(day: 28), createEvent(day: 28), createEvent(day: 27), createEvent(day: 27)], target: Date())
+    EventList([createEvent(date: Date())], target: Date())
         .environmentObject(CustomColor(foreGround: .black, backGround: .white))
 }

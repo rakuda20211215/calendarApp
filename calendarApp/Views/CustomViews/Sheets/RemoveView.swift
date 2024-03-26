@@ -37,7 +37,7 @@ struct RemoveView: View {
                     .padding(5)
                     .onTapGesture {
                         showInfo.toggle()
-                        let isDelete = eventViewController.eventController.removeEvent(ekEvent: ekEvent, span: .thisEvent)
+                        let isDelete = EventController.removeEvent(ekEvent: ekEvent, span: .thisEvent)
                         //eventData.initializeObj()
                         if isDelete {
                             //成否のメッセージ
@@ -67,7 +67,7 @@ struct RemoveView: View {
                         .padding(5)
                         .onTapGesture {
                             showInfo.toggle()
-                            let isDeleted = eventViewController.eventController.removeEvent(ekEvent: ekEvent, span: .futureEvents)
+                            let isDeleted = EventController.removeEvent(ekEvent: ekEvent, span: .futureEvents)
                             eventViewController.updateSelectedDayEvents()
                             if eventViewController.selectedDayEvents == nil {
                                 eventViewController.showEvents = false

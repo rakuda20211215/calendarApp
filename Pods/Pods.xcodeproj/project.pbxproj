@@ -1180,6 +1180,9 @@
 				en,
 			);
 			mainGroup = CF1408CF629C7361332E53B88F7BD30C;
+			packageReferences = (
+				68905B8B2B9387F8008BE9A0 /* XCRemoteSwiftPackageReference "SwiftJapaneseNationalHolidays" */,
+			);
 			productRefGroup = C0D4414B4565D220FF1185763F60783F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1801,6 +1804,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		68905B8B2B9387F8008BE9A0 /* XCRemoteSwiftPackageReference "SwiftJapaneseNationalHolidays" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/YOCKOW/SwiftJapaneseNationalHolidays.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = BFDFE7DC352907FC980B868725387E98 /* Project object */;
 }

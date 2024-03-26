@@ -28,29 +28,30 @@ struct EventSealLong: View {
     @State private var isValidURL: Bool = false
     
     init(_ ekEvent: EKEvent, date: Date? = Date(), period: dateElements = .day) {
+        print(ekEvent)
         self.ekEvent = ekEvent
         
         self.period = period
         
-        let startDay: Int = CalendarDateComponent.getDay(ekEvent.startDate)
-        let endDay:   Int = CalendarDateComponent.getDay(ekEvent.endDate)
+        let startDay: Int = CalendarDateUtil.getDay(ekEvent.startDate)
+        let endDay:   Int = CalendarDateUtil.getDay(ekEvent.endDate)
         
         switch period {
         case .year:
-            self.startTime = "\(CalendarDateComponent.getMonth(ekEvent.startDate)) / \(startDay)"
-            self.endTime   = "\(CalendarDateComponent.getMonth(ekEvent.endDate)) / \(endDay)"
+            self.startTime = "\(CalendarDateUtil.getMonth(ekEvent.startDate)) / \(startDay)"
+            self.endTime   = "\(CalendarDateUtil.getMonth(ekEvent.endDate)) / \(endDay)"
         case .month:
             self.startTime = "\(startDay)"
             self.endTime   = "\(endDay)"
         default:
             // 終日チェック
-            let day: Int = CalendarDateComponent.getDay(date!)
+            let day: Int = CalendarDateUtil.getDay(date!)
             
             if startDay == day {
-                startTime = "\(CalendarDateComponent.getHour(ekEvent.startDate)):\(String(format: "%02d", (CalendarDateComponent.getMinute(ekEvent.startDate))))"
+                startTime = "\(CalendarDateUtil.getHour(ekEvent.startDate)):\(String(format: "%02d", (CalendarDateUtil.getMinute(ekEvent.startDate))))"
                 
-                if 0 == CalendarDateComponent.getHour(ekEvent.startDate)
-                    && 0 == CalendarDateComponent.getMinute(ekEvent.startDate) {
+                if 0 == CalendarDateUtil.getHour(ekEvent.startDate)
+                    && 0 == CalendarDateUtil.getMinute(ekEvent.startDate) {
                     isAllDayStart = true
                 } else {
                     isAllDayStart = false
@@ -61,10 +62,10 @@ struct EventSealLong: View {
             }
             
             if endDay == day {
-                endTime = "\(CalendarDateComponent.getHour(ekEvent.endDate)):\(String(format: "%02d", (CalendarDateComponent.getMinute(ekEvent.endDate))))"
+                endTime = "\(CalendarDateUtil.getHour(ekEvent.endDate)):\(String(format: "%02d", (CalendarDateUtil.getMinute(ekEvent.endDate))))"
                 
-                if 23 == CalendarDateComponent.getHour(ekEvent.endDate)
-                    && 59 == CalendarDateComponent.getMinute(ekEvent.endDate) {
+                if 23 == CalendarDateUtil.getHour(ekEvent.endDate)
+                    && 59 == CalendarDateUtil.getMinute(ekEvent.endDate) {
                     isAllDayend = true
                 } else {
                     isAllDayend = false
@@ -291,7 +292,7 @@ struct EventSealLong: View {
                                     if isActiveSave {
                                         eventData.ekEvent.isAllDay = eventData.isAllDay
                                         eventData.ekEvent.calendar = eventData.currentCalendar
-                                        let _ = eventData.eventController.addEvent(ekEvent: eventData.ekEvent)
+                                        let _ = EventController.addEvent(ekEvent: eventData.ekEvent)
                                         eventViewController.updateSelectedDayEvents()
                                         showInfo.toggle()
                                     }

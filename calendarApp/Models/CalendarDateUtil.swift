@@ -7,7 +7,7 @@
 
 import Foundation
 
-class CalendarDateComponent: ObservableObject {
+class CalendarDateUtil: ObservableObject {
     var year: Int
     var month: Int
     @Published var yearView: Int
@@ -55,20 +55,20 @@ class CalendarDateComponent: ObservableObject {
     }
     
     static var getWeekSymbols: [String] {
-        var calendar = CalendarDateComponent.calendar
+        var calendar = CalendarDateUtil.calendar
         calendar.locale = Locale(identifier: "ja_JP")
         return calendar.shortWeekdaySymbols
     }
     
     static func getDates(from fromDate: Date, to toDate: Date) -> [Date] {
         var dates: [Date] = []
-        let calendar = CalendarDateComponent.calendar
+        let calendar = CalendarDateUtil.calendar
         var from = calendar.startOfDay(for: fromDate)
-        var to = calendar.startOfDay(for: toDate)
+        let to = calendar.startOfDay(for: toDate)
         
         while from <= to {
             dates.append(from)
-            guard let nextDate = CalendarDateComponent.calendar.date(byAdding: .day, value: 1, to: from) else { break }
+            guard let nextDate = CalendarDateUtil.calendar.date(byAdding: .day, value: 1, to: from) else { break }
             from = nextDate
         }
         
@@ -97,7 +97,7 @@ class CalendarDateComponent: ObservableObject {
     }
     
     static func isPast(_ date: Date?) -> Bool {
-        let calendar = CalendarDateComponent.calendar
+        let calendar = CalendarDateUtil.calendar
         let target = calendar.startOfDay(for: date ?? Date())
         let today = calendar.startOfDay(for: Date())
         return target < today
