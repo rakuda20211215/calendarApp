@@ -14,6 +14,7 @@
 		68756C6E2B96DB330020478E /* SwitchableEKCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68756C6D2B96DB330020478E /* SwitchableEKCalendar.swift */; };
 		68756C722B96E9410020478E /* CGColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68756C712B96E9410020478E /* CGColor.swift */; };
 		68756C742B96E9B50020478E /* Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68756C732B96E9B50020478E /* Calendar.swift */; };
+		6875775E2BB3AED600118B62 /* SimpleColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6875775D2BB3AED600118B62 /* SimpleColorPicker.swift */; };
 		687940B12BA145F10098A8A8 /* TextFieldDynamicWidth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687940B02BA145F10098A8A8 /* TextFieldDynamicWidth.swift */; };
 		687940B52BA15FF20098A8A8 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 687940B42BA15FF20098A8A8 /* View.swift */; };
 		6879CC2C2AF7E142007B6B13 /* EventList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6879CC2B2AF7E142007B6B13 /* EventList.swift */; };
@@ -67,6 +68,7 @@
 		68756C6D2B96DB330020478E /* SwitchableEKCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchableEKCalendar.swift; sourceTree = "<group>"; };
 		68756C712B96E9410020478E /* CGColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGColor.swift; sourceTree = "<group>"; };
 		68756C732B96E9B50020478E /* Calendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Calendar.swift; sourceTree = "<group>"; };
+		6875775D2BB3AED600118B62 /* SimpleColorPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleColorPicker.swift; sourceTree = "<group>"; };
 		687940B02BA145F10098A8A8 /* TextFieldDynamicWidth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextFieldDynamicWidth.swift; sourceTree = "<group>"; };
 		687940B42BA15FF20098A8A8 /* View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = View.swift; sourceTree = "<group>"; };
 		6879CC2B2AF7E142007B6B13 /* EventList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventList.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 				687FBFDF2B66105800530E7A /* RemoveView.swift */,
 				687FBFE12B66358800530E7A /* WebView.swift */,
 				68800C2D2B9D3E1F00722EB7 /* EKCalendarDetail.swift */,
+				6875775D2BB3AED600118B62 /* SimpleColorPicker.swift */,
 			);
 			path = Sheets;
 			sourceTree = "<group>";
@@ -425,6 +428,7 @@
 				687E07712AD907D2001D1F9A /* AddEventView.swift in Sources */,
 				687B9D6B2B90C3FE00B7BC13 /* CalendarDateUtil.swift in Sources */,
 				68B4BEF12B94BEDB000F3460 /* EKCalendarTab.swift in Sources */,
+				6875775E2BB3AED600118B62 /* SimpleColorPicker.swift in Sources */,
 				688EAFEE2ACF86D500228188 /* EventSealShortPdding.swift in Sources */,
 				687FBFE02B66105800530E7A /* RemoveView.swift in Sources */,
 				687940B52BA15FF20098A8A8 /* View.swift in Sources */,

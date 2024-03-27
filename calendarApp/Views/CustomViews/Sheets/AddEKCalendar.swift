@@ -43,7 +43,7 @@ struct AddEKCalendar: View {
                     }
                     .padding()
                     let paddingSize: CGFloat = 10
-                    VStack {
+                    VStack(alignment: .center) {
                         HStack {
                             Text("カラー")
                                 .font(.system(size: 18, weight: .medium))
@@ -98,7 +98,7 @@ struct AddEKCalendar: View {
                             .font(.system(size: 15))
                             .padding()
                         }
-                        SimpleColorSelect(selectedColor: $selectedColor, hexColor: $hexColor, width: width - paddingSize * 2)
+                        SimpleColorSelect(selectedColor: $selectedColor, hexColor: $hexColor)
                         /*
                         if isSimple {
                             SimpleColorSelect(selectedColor: $selectedColor, hexColor: $hexColor, width: width - paddingSize * 2)
@@ -151,125 +151,6 @@ struct AddEKCalendar: View {
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
-    }
-}
-
-struct SimpleColorSelect: View {
-    @Binding var selectedColor: CGColor
-    @Binding var hexColor: String
-    let width: CGFloat
-    let colorSelection: [CGColor] = [
-        CGColor(red: 1, green: 0, blue: 0, alpha: 1),
-        CGColor(red: 0.8, green: 0.3, blue: 0.1, alpha: 1),
-        CGColor(red: 1, green: 1, blue: 0, alpha: 1),
-        CGColor(red: 0.6, green: 1, blue: 0, alpha: 1),
-        CGColor(red: 0.2, green: 0.4, blue: 0, alpha: 1),
-        CGColor(red: 0, green: 0.8, blue: 0.4, alpha: 1),
-        CGColor(red: 0, green: 0.8, blue: 0.8, alpha: 1),
-        CGColor(red: 0, green: 0.5, blue: 1, alpha: 1),
-        CGColor(red: 0, green: 0, blue: 0.9, alpha: 1),
-        CGColor(red: 0.4, green: 0, blue: 0.9, alpha: 1),
-        CGColor(red: 0.8, green: 0, blue: 0.8, alpha: 1),
-        CGColor(red: 0.8, green: 0, blue: 0.5, alpha: 1),
-        CGColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1),
-        CGColor(red: 1, green: 1, blue: 1, alpha: 1),
-        CGColor(red: 0, green: 0, blue: 0, alpha: 1)
-    ]
-    var body: some View {
-        let minColorSize: CGFloat = 60
-        let space: CGFloat = 5
-        let numColumn = Int(width / (minColorSize + space))
-        let colorSize = width / CGFloat(numColumn) - space * 2
-        var numRow: Int {
-            print(width, numColumn)
-            return !colorSelection.isEmpty && numColumn != 0 ? (colorSelection.count / numColumn) : 0
-        }
-        
-        VStack(alignment: .center, spacing: 0) {
-            ForEach(0...numRow, id: \.self) { row in
-                HStack(spacing: 0) {
-                    ForEach(0..<numColumn, id: \.self) { column in
-                        if colorSelection.indices.contains((row * numColumn) + column) {
-                            let color = colorSelection[(row * numColumn) + column]
-                            Button {
-                                selectedColor = color
-                                if let hex = color.colorToHex() {
-                                    hexColor = hex
-                                }
-                            } label: {
-                                Rectangle()
-                                    .frame(width: colorSize, height: colorSize)
-                                    .foregroundStyle(Color(color))
-                                    .clipShape(Circle())
-                            }
-                            .padding(space)
-                        }
-                    }
-                }
-            }
-        }
-        //.frame(height: (colorSize + space * CGFloat(2)) * CGFloat(numColumn))
-    }
-}
-
-
-struct DetailColorSelect: View {
-    @EnvironmentObject private var customColor: CustomColor
-    @Binding var selectedColor: CGColor
-    let rgbColors: [CGColor] = [
-        CGColor(red: 1, green: 0.1, blue: 0.1, alpha: 1),
-        CGColor(red: 0, green: 1, blue: 0, alpha: 1),
-        CGColor(red: 0, green: 0, blue: 1, alpha: 1)
-    ]
-    
-    var body: some View {
-        VStack {
-            ForEach(0..<rgbColors.count, id: \.self) { index in
-                HStack {
-                    ZStack(alignment: .center) {
-                        /*
-                         Rectangle()
-                         .foregroundStyle(.white)
-                         .frame(width: 40, height: 40)*/
-                        Image(systemName: "minus")
-                            .font(.system(size: 40))
-                            .contentShape(Rectangle())
-                            .onLongPressRepeatGesture {
-                                setRGB(index, add: -1)
-                            } startedAction: {
-                                setRGB(index, add: -1)
-                            }
-                    }
-                    if let rgbInt = selectedColor.components?[index] {
-                        Text("\(Int(rgbInt * 255))")
-                            .foregroundStyle(customColor.backGround)
-                            .font(.system(size: 19))
-                            .frame(width: 70)
-                    }
-                    ZStack(alignment: .center) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 40))
-                            .contentShape(Rectangle())
-                            .onLongPressRepeatGesture {
-                                setRGB(index, add: 1)
-                            } startedAction: {
-                                setRGB(index, add: 1)
-                            }
-                    }
-                }
-                .padding(7)
-                .background(Color(rgbColors[index]).opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding(5)
-            }
-        }
-    }
-    
-    func setRGB(_ index: Int, add: CGFloat) {
-        print(add)
-        guard var rgbComponents: [CGFloat] = selectedColor.components else { return }
-        rgbComponents[index] = (rgbComponents[index] * 255 + add) / 255
-        selectedColor = CGColor(red: rgbComponents[0], green: rgbComponents[1], blue: rgbComponents[2], alpha: 1)
     }
 }
 

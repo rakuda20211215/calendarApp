@@ -9,8 +9,11 @@ import SwiftUI
 
 struct EKCalendarDetail: View {
     var title: String
+    var color: CGColor = CGColor(gray: 1, alpha: 1)
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack {
+            
+        }
     }
 }
 
